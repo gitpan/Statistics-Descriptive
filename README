@@ -1,3 +1,7 @@
+This updated release fixes several bugs introduced by the OO interface rewrite.
+Bugs were fixed in the least_squares_fit and median methods and a syntax
+error caused by "my" scoping was cleaned up.
+
 This is a complete rewrite of the OO interface to Statistics::Descriptive.
 A full description of the new interface can be found in the POD documentation
 inside the module, here are the highlights:
@@ -20,3 +24,33 @@ inside the module, here are the highlights:
    should speed up some of the analysis by not repeatedly sorting the
    data.
 
+List of methods by class:
+
+Statistics::Descriptive::Sparse
+----------------------------------
+add_data
+count
+mean
+sum
+variance
+pseudo_variance
+min
+max
+mindex
+maxdex
+standard_deviation
+sample_range
+
+Statistics::Descriptive::Full
+----------------------------------
+All methods above and:
+get_data
+sort_data
+presorted
+median
+trimmed_mean
+harmonic_mean
+mode
+geometric_mean
+frequency_distribution
+least_squares_fit

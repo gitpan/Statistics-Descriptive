@@ -4,11 +4,11 @@ package Statistics::Descriptive;
 
 package Statistics::Descriptive::Sparse;
 use strict;
-use vars qw($VERSION $AUTOLOAD);
+use vars qw($VERSION $AUTOLOAD %fields);
 use Carp;
 
 ##Define the fields to be used as methods
-my %fields = (
+%fields = (
   count			=> 0,
   mean			=> 0,
   sum			=> 0,
@@ -23,7 +23,7 @@ my %fields = (
   );
 
 require 5.002;
-$VERSION = '2.0';
+$VERSION = '2.1';
 
 sub new {
   my $proto = shift;
@@ -95,12 +95,12 @@ package Statistics::Descriptive::Full;
 
 use Carp;
 use strict;
-use vars qw(@ISA $a $b);
+use vars qw(@ISA $a $b %fields);
 
 @ISA = qw(Statistics::Descriptive::Sparse);
 
 ##Create a list of fields not to remove when data is updated
-my %fields = (
+%fields = (
   _permitted => undef,  ##Place holder for the inherited key hash
   data       => undef,  ##Our data
   presorted  => undef,  ##Flag to indicate the data is already sorted
@@ -178,7 +178,7 @@ sub median {
   }
   else {
     return $self->{median} =
-	   (@{$self->{data}}[($count-2)/2] + @{$self->{data}}[($count-2)/2] ) / 2;
+	   (@{$self->{data}}[($count)/2] + @{$self->{data}}[($count-2)/2] ) / 2;
   }
 }
 
@@ -188,7 +188,7 @@ sub trimmed_mean {
   my $upper = shift || $lower; #upper bound is in arg list or is same as lower
 
   ##Cache
-  my $thistm = "tm$lower$upper";
+  my $thistm = join ':','tm','$lower','$upper';
   return $self->{$thistm} if defined $self->{$thistm};
 
   my $lower_trim = int ($self->{count}*$lower); 
@@ -215,7 +215,7 @@ sub harmonic_mean {
     return $self->{harmonic_mean} = 0 unless $_; #If any data is zero, return zero? 
     $hs += 1/$_;
   }
-  $self->{harmonic_mean} = $self->{count}/$hs;
+  return $self->{harmonic_mean} = $self->{count}/$hs;
 }
 
 sub mode {
@@ -291,15 +291,14 @@ sub least_squares_fit {
   }
   else {
     @x = @_;
-    shift @x;
-    if ( $self->{count} != @x) {
+    if ( $self->{count} != scalar @x) {
       carp "Range and domain are of unequal length.";
       return undef;
     }
   }
   my @coefficients;
   my ($sigmaxy, $sigmax, $sigmaxx) = (0,0,0);
-  my $sigmay = $self->Sum;
+  my $sigmay = $self->sum;
   my $count = $self->{count};
   my $iter = 0;
   for (@x) {
@@ -311,7 +310,7 @@ sub least_squares_fit {
   $coefficients[1] = ($count*$sigmaxy - $sigmax*$sigmay)/
 		     ($count*$sigmaxx - $sigmax*$sigmax);
   $coefficients[0] = ($sigmay - $coefficients[1]*$sigmax)/$count;
-  @coefficients;
+  return @{ $self->{least_squares_fit} } = @coefficients;
 }
 
 1;
@@ -446,7 +445,7 @@ the flag.
 
 =item $stat->median();
 
-Returns the median value of the data.
+Sorts the data and returns the median value of the data.
 
 =item $stat->harmonic_mean();
 
@@ -466,7 +465,8 @@ C<trimmed_mean(ltrim)> returns the mean with a fraction C<ltrim>
 of entries at each end dropped. C<trimmed_mean(ltrim,utrim)> 
 returns the mean after a fraction C<ltrim> has been removed from the
 lower end of the data and a fraction C<utrim> has been removed from the
-upper end of the data.
+upper end of the data.  This method sorts the data before beginning
+to analyze it.
 
 =item $stat->frequency_distribution();
 
@@ -493,7 +493,7 @@ prints
 since there are four items less than or equal to 2.5, and 3 items
 greater than 2.5 and less than 4.
 
-=item $stat->least_squares_fit([@x]);
+=item $stat->least_squares_fit();
 
 C<least_squares_fit()> performs a least squares fit on the data, assuming
 a domain of 1,2,3... It returns an array of two elements; the value in the 
