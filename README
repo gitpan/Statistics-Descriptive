@@ -1,0 +1,22 @@
+This is a complete rewrite of the OO interface to Statistics::Descriptive.
+A full description of the new interface can be found in the POD documentation
+inside the module, here are the highlights:
+
+*  None of the underlying methods of calculation have been changed.
+
+*  There are two separate, distinct classes in the module, Sparse and Full.
+   Full inherits from Sparse and extends it with storage of the data
+   and additional methods that depend on analyzing the data based on
+   user input (in general).  It should be easy to inherit from
+   either of the classes.
+
+*  Minimum and maximum methods are now calculated as part of the
+   Sparse class, resulting in a faster access to that data.
+
+*  The indices to the maxima and minima are also available.
+
+*  Methods were added to manually sort the data and prevent subsequent
+   sorting of the data, sort_data and presorted, respectively.  This
+   should speed up some of the analysis by not repeatedly sorting the
+   data.
+
