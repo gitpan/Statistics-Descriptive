@@ -1,6 +1,13 @@
 Revision history for Perl extension Statistics::Descriptive.
 
-2.1   Monday Feb 23 1998
+2.3   Thursday Nov 12 1998
+	- Fix for frequency distribution.
+	  Changed Makefile.PL to ease ActiveState distribution of the module.
+	  Andrea's Code for preventing division by zero and other 
+	   improvements.  She also wrote a great test bench.
+	  Added code from Warren Matthews to calculate percentile.
+
+2.2   Monday Feb 23 1998
 	- Multiple bug fixes:
 	  Fixed min/max bug with '0' vs defined.
 	  Provided fix for bug with AUTOLOAD/DESTROY/Carp problem.

@@ -4,5 +4,8 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'		=> 'Statistics::Descriptive',
     'VERSION_FROM'	=> 'Descriptive.pm', # finds $VERSION
+    ($] >= 5.005 ?
+      ('ABSTRACT'   	=> 'Supplies statistical methods for perl5',
+       'AUTHOR'     	=> 'Colin Kuskie (ckuskie@cadence.com)') : ()),
     'dist'		=> { COMPRESS => "gzip -9f" }
 );

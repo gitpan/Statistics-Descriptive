@@ -1,19 +1,24 @@
-This new version (2.2) of Statistics::Descriptive contains:
+This new version (2.3) of Statistics::Descriptive contains:
 
-- A bug fix for the calculation of min and max.  Thanks to Thomas Goetze
-  for alerting me to this (and supplying a solution).
+- Code provided by Andrea Spinelli to prevent division by zero and to
+  make consistent return values for undefined behavior.
 
-- A bug fix for a strange bug when using AUTOLOAD and Carp.  Actually,
-  I benefitted from the bug.  If you use the AUTOLOAD from the perltoot
-  manpage and use Carp to provide "nice" error trapping from the module,
-  then the AUTOLOAD doesn't catch calls to DESTROY (which it is supposed
-  to do, technically).  If you use warn, then it catches the call to
-  DESTROY and prints the error message 'Unable to access method DESTROY
-  in class Statistics::Descriptive'.
+- Andrea also wrote a great test bench to check out the division
+  by zero.  We'll be extending it to check for other things, too.
 
-  Thanks to Terrence Brannon for alerting me to this.  He, running
-  perl5.003_07, has the AUTOLOAD method intermittently catch the
-  call even when Carp is being used.  Go figure...
+- Code to calculate the percentile of the data as defined by RFC2330
+  Thanks to Warren Matthews for his contribution.
+
+- A bug fix for the calculation of frequency distributions.  Thanks to
+  Nick Tolli for alerting me to this.
+
+- Slight changes to the Makefile to make the ActiveState people happy.
+  Hey, if they're going to make Perl easy for Windows users then I
+  can add a few lines of text to a Makefile for them.
+
+Documentation was also added to show how to turn the return value
+of least_squares_fit into a hash.  If returning a hash is something
+that many of you users want then I'll add it to the next release.
 
 List of methods by class:
 
@@ -38,6 +43,7 @@ All methods above and:
 get_data
 sort_data
 presorted
+percentile
 median
 trimmed_mean
 harmonic_mean
@@ -47,6 +53,18 @@ frequency_distribution
 least_squares_fit
 
 Ideas for ongoing development:
+
+- re: Georg Fuellen
+  A function to define the "maxima" of a distribution.  In other words,
+  return an array that contains all data that falls within a given
+  confidence interval.
+
+- Move source to C and XS for speed improvements. (Interface to R or S?)
+
+- Move to PDL for a unified math solution and maybe take advantage of
+  their compact storage.
+
+- Methods for covariance and correlation.
 
 - An interface to Jon Orwant's Statistics::ChiSquare module to
   provide a method for determining how random data is (for a uniform

@@ -2,6 +2,13 @@ package Statistics::Descriptive;
 
 ##This module draws heavily from perltoot v0.4 from Tom Christiansen.
 
+require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
+		  ##Not only that, but it's the latest "safe" version of
+		  ##Perl5.  01-03 weren't bug free.
+$VERSION = '2.3a';
+
+$Tolerance = 0.0;
+
 package Statistics::Descriptive::Sparse;
 use strict;
 use vars qw($VERSION $AUTOLOAD %fields);
@@ -21,9 +28,6 @@ use Carp;
   standard_deviation	=> undef,
   sample_range		=> undef,
   );
-
-require 5.004;  ##Yes, this is underhanded, but makes support for me easier
-$VERSION = '2.2';
 
 sub new {
   my $proto = shift;
@@ -166,6 +170,18 @@ sub presorted {
   }
 }
 
+sub percentile {
+  my $self = shift;
+  my $percentile = shift || 0;
+  ##Cached?
+  my $thispercentile = '%:' . $percentile;
+  return $self->{$thispercentile} if defined $self-{$thispercentile};
+
+  $self->sort_data() unless $self->{'presorted'};
+  return $self->{$thispercentile} = 
+    @{ $self->{data} }[ int($self->{count}*$percentile/100) ];
+}
+
 sub median {
   my $self = shift;
 
@@ -213,9 +229,13 @@ sub harmonic_mean {
   return $self->{harmonic_mean} if defined $self->{harmonic_mean};
   my $hs = 0;
   for (@{ $self->{data} }) {
-    return $self->{harmonic_mean} = 0 unless $_; #If any data is zero, return zero? 
+    ##Guarantee that there are no divide by zeros
+    return $self->{harmonic_mean} = undef
+      unless abs($_) > $Statistics::Descriptive::Tolerance;
     $hs += 1/$_;
   }
+  return $self->{harmonic_mean} = undef
+    unless abs($hs) > $Statistics::Descriptive::Tolerance;
   return $self->{harmonic_mean} = $self->{count}/$hs;
 }
 
@@ -256,6 +276,7 @@ sub geometric_mean {
 sub frequency_distribution {
   my $self = shift;
   my $element;
+  my @k = ();
   return undef if $self->{count} < 2; #Must have at least two elements
 
   ##Cache
@@ -263,15 +284,17 @@ sub frequency_distribution {
 
   my %bins;
   my $partitions   = shift;
+  return undef unless $partitions >= 1;
   my $interval = $self->{sample_range}/$partitions;
   my $iter = $self->{min};
   while (($iter += $interval) <  $self->{max}) {
     $bins{$iter} = 0;
+    push @k, $iter;  ##Keep the "keys" unstringified
   }
   $bins{$self->{max}} = 0;
-  my @k = sort { $a <=> $b } keys %bins;
-  ELEMENT:
-  foreach $element (@{$self->{data}}) {
+  push @k, $self->{max};
+
+  ELEMENT: foreach $element (@{$self->{data}}) {
     for (@k) {
       if ($element <= $_) {
         $bins{$_}++;
@@ -284,9 +307,22 @@ sub frequency_distribution {
 
 sub least_squares_fit {
   my $self = shift;
-  return undef if $self->{count} < 2;
-  return $self->{least_squares_fit} if defined $self->{least_squares_fit};
+  return () if $self->{count} < 2;
+  return @{ $self->{least_squares_fit} }
+	 if defined $self->{least_squares_fit};
+
+  ##Sigma sums
+  my ($sigmaxy, $sigmax, $sigmaxx, $sigmayy, $sigmay) = (0,0,0,0,$self->sum);
+  my ($xvar, $yvar, $err);
+
+  ##Work variables
+  my ($iter,$y,$x,$denom) = (0,0,0,0);
+  my $count = $self->{count};
   my @x;
+
+  ##Outputs
+  my ($m, $q, $r, $rms);
+
   if (!defined $_[1]) {
     @x = 1..$self->{count};
   }
@@ -294,24 +330,42 @@ sub least_squares_fit {
     @x = @_;
     if ( $self->{count} != scalar @x) {
       carp "Range and domain are of unequal length.";
-      return undef;
+      return ();
     }
   }
-  my @coefficients;
-  my ($sigmaxy, $sigmax, $sigmaxx) = (0,0,0);
-  my $sigmay = $self->sum;
-  my $count = $self->{count};
-  my $iter = 0;
-  for (@x) {
-    $sigmaxy += $_ * $self->{data}[$iter];
-    $sigmax += $_;
-    $sigmaxx += $_*$_;
+  foreach $x (@x) {
+    $y = $self->{data}[$iter];
+    $sigmayy += $y * $y;
+    $sigmaxx += $x * $x;
+    $sigmaxy += $x * $y;
+    $sigmax  += $x;
     $iter++;
   }
-  $coefficients[1] = ($count*$sigmaxy - $sigmax*$sigmay)/
-		     ($count*$sigmaxx - $sigmax*$sigmax);
-  $coefficients[0] = ($sigmay - $coefficients[1]*$sigmax)/$count;
-  return @{ $self->{least_squares_fit} } = @coefficients;
+  $denom = $count * $sigmaxx - $sigmax*$sigmax;
+  return ()
+    unless abs( $denom ) > $Statistics::Descriptive::Tolerance;
+
+  $m = ($count*$sigmaxy - $sigmax*$sigmay) / $denom;
+  $q = ($sigmaxx*$sigmay - $sigmax*$sigmaxy ) / $denom;
+
+  $xvar = $sigmaxx - $sigmax*$sigmax / $count;
+  $yvar = $sigmayy - $sigmay*$sigmay / $count;
+
+  $denom = sqrt( $xvar * $yvar );
+  return () unless (abs( $denom ) > $Statistics::Descriptive::Tolerance);
+  $r = ($sigmaxy - $sigmax*$sigmay / $count )/ $denom;
+
+  $iter = 0;
+  $rms = 0.0;
+  foreach (@x) {
+    ##Error = Real y - calculated y
+    $err = $self->{data}[$iter] - ( $m * $_ + $q );
+    $rms += $err*$err;
+    $iter++;
+  }
+
+  $rms = sqrt($rms) / $count;
+  return @{ $self->{least_squares_fit} } = ($q, $m, $r, $rms);
 }
 
 1;
@@ -334,6 +388,7 @@ Statistics::Descriptive - Module of basic descriptive statistical functions.
   $stat->add_data(1,2,3,4); $mean = $stat->mean();
   $var  = $stat->variance();
   $tm   = $stat->trimmed_mean(.25);
+  $Statistics::Descriptive::Tolerance = 1e-10;
 
 =head1 DESCRIPTION
 
@@ -343,6 +398,12 @@ data storage and calculation objects: sparse and full. With the sparse
 method, none of the data is stored and only a few statistical measures
 are available. Using the full method, the entire data set is retained
 and additional functions are available.
+
+Whenever a division by zero may occur, the denominator is checked to be
+greater than the value C<$Statistics::Descriptive::Tolerance>, which
+defaults to 0.0. You may want to change this value to some small
+positive value such as 1e-24 in order to obtain error messages in case
+of very small denominators.
 
 =head1 METHODS
 
@@ -414,11 +475,11 @@ described above.
 =item $stat->add_data(1,2,4,5);
 
 Adds data to the statistics variable.  All of the sparse statistical
-values are updated and cached.  Cached values from full methods are
+values are updated and cached.  Cached values from Full methods are
 deleted since they are no longer valid.  
 
-B<Note:  Calling add_data with an empty array will delete all of your
-cached values!>
+I<Note:  Calling add_data with an empty array will delete all of your
+Full method cached values!>
 
 =item $stat->get_data();
 
@@ -431,6 +492,8 @@ method uses perl's internal sort.
 
 =item $stat->presorted(1);
 
+=item $stat->presorted();
+
 If called with a non-zero argument, this method sets a flag that says
 the data is already sorted and need not be sorted again.  Since some of
 the methods in this class require sorted data, this saves some time.
@@ -439,13 +502,20 @@ the data from being sorted again. The flag is cleared whenever add_data
 is called.  Calling the method without an argument returns the value of
 the flag.
 
+=item $stat->percentile(25);
+
+Sorts the data and returns the value that corresponds to the
+percentile as defined in RFC2330.
+
 =item $stat->median();
 
 Sorts the data and returns the median value of the data.
 
 =item $stat->harmonic_mean();
 
-Returns the harmonic mean of the data.
+Returns the harmonic mean of the data.  Since the mean is undefined
+if any of the data are zero or if the sum of the reciprocals is zero,
+it will return undef for both of those cases.
 
 =item $stat->geometric_mean();
 
@@ -467,13 +537,14 @@ to analyze it.
 =item $stat->frequency_distribution();
 
 C<frequency_distribution(partitions)> slices the data into C<partition>
-sets and counts the number of items that fall into each partition. It
-returns an associative array where the keys are the numerical values of the 
-partitions used. The minimum value of the data set is not a key and
-the maximum value of the data set is always a key. The number of
-entries for a particular partition key are the number of items which are 
-greater than the previous partition key and less then or equal to the current 
-partition key. As an example, 
+sets (where partition is greater than 1) and counts the number of items
+that fall into each partition. It returns an associative array where
+the keys are the numerical values of the partitions used. The minimum
+value of the data set is not a key and the maximum value of the data
+set is always a key. The number of entries for a particular partition
+key are the number of items which are greater than the previous
+partition key and less then or equal to the current partition key. As
+an example,
 
    $stat->add_data(1,1.5,2,2.5,3,3.5,4);
    %f = $stat->frequency_distribution(2);
@@ -493,17 +564,44 @@ greater than 2.5 and less than 4.
 
 =item $stat->least_squares_fit(@x);
 
-C<least_squares_fit()> performs a least squares fit on the data, assuming
-a domain of 1,2,3... It returns an array of two elements; the value in the 
-zeroth position is the constant (x^0) term and the value in the first 
-position is the coeffiecient of the x^1 term. C<least_squares_fit(@x)> uses 
-the values in C<@x> as the domain.
+C<least_squares_fit()> performs a least squares fit on the data,
+assuming a domain of C<@x> or a default of 1..$stat->count(); It
+returns an array of four elements C<($q, $m, $r, $rms)> where
+
+=over 4
+
+=item C<$q and $m>
+
+satisfy the equation C($y = $m*$x + $q).
+
+=item C<$r>
+
+is the Pearson linear correlation cofficient.
+
+=item C<$rms>
+
+is the root-mean-square error.
+
+=back
+
+If case of error or division by zero, the empty list is returned.
+
+The array that is returned can be "coerced" into a hash structure
+by doing the following:
+
+  my %hash = ();
+  @hash{'q', 'm', 'r', 'err'} = $stat->least_squares_fit();
 
 =back
 
 =head1 REPORTING ERRORS
 
-When reporting errors, please include the following to help me out:
+I read 4 of the 5 perl newsgroups
+comp.lang.perl.{misc,moderated,modules,announce} and check my email at
+work frequently, so please feel free to post errors to either or both
+of those places.  However, realize that if you post to the newsgroup it
+has the benefit of alerting other users of the problem.  When reporting
+errors, please include the following to help me out:
 
 =over 4
 
@@ -528,6 +626,8 @@ track it down.
 
 =back
 
+My email address can be found at www.perl.com under Who's Who.
+
 =head1 REFERENCES
 
 The Art of Computer Programming, Volume 2, Donald Knuth.
@@ -538,15 +638,34 @@ Probability and Statistics for Engineering and the Sciences, Jay Devore.
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997,1998 Colin Kuskie <colink@latticesemi.com>. All rights reserved. 
-This program is free software; you can redistribute it and/or modify it 
+Copyright (c) 1997,1998 Colin Kuskie. All rights reserved.  This
+program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
 
-Copyright (c) 1994,1995 Jason Kastner <jason@wagner.com>. All rights reserved. 
-This program is free software; you can redistribute it and/or modify it 
-under the same terms as Perl itself.
+Copyright (c) 1998 Andrea Spinelli. All rights reserved.  This program
+is free software; you can redistribute it and/or modify it under the
+same terms as Perl itself.
+
+Copyright (c) 1994,1995 Jason Kastner. All rights
+reserved.  This program is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
 
 =head1 REVISION HISTORY
+
+=item v2.3
+
+Rolled into November 1998
+
+Code provided by Andrea Spinelli to prevent division by zero and to
+make consistent return values for undefined behavior.  Andrea also
+provided a test bench for the module.
+
+A bug fix for the calculation of frequency distributions.  Thanks to Nick
+Tolli for alerting this to me.
+
+Added 4 lines of code to Makefile.PL to make it easier for the ActiveState
+installation tool to use.  Changes work fine in perl5.004_04, haven't
+tested them under perl5.005xx yet.
 
 =item v2.2
 
