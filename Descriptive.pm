@@ -5,9 +5,11 @@ package Statistics::Descriptive;
 require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
 		  ##Not only that, but it's the latest "safe" version of
 		  ##Perl5.  01-03 weren't bug free.
-$VERSION = '2.3a';
+$VERSION = '2.4';
 
 $Tolerance = 0.0;
+
+use POSIX qw/ceil/;
 
 package Statistics::Descriptive::Sparse;
 use strict;
@@ -173,13 +175,21 @@ sub presorted {
 sub percentile {
   my $self = shift;
   my $percentile = shift || 0;
-  ##Cached?
-  my $thispercentile = '%:' . $percentile;
-  return $self->{$thispercentile} if defined $self-{$thispercentile};
+  ##Since we're returning a single value there's no real need
+  ##to cache this.
+
+  ##If the requested percentile is less than the "percentile bin
+  ##size" then return undef.  Check description of RFC 2330 in the
+  ##POD below.
+  my $count = $self->{'count'};
+  return undef if $percentile < 100 / $count;
 
   $self->sort_data() unless $self->{'presorted'};
-  return $self->{$thispercentile} = 
-    @{ $self->{data} }[ int($self->{count}*$percentile/100) ];
+  my $num = $count*$percentile/100;
+  my $index = &POSIX::ceil($num) - 1;
+  return wantarray
+    ?  (${ $self->{data} }[ $index ], $index)
+    :   ${ $self->{data} }[ $index ];
 }
 
 sub median {
@@ -502,10 +512,53 @@ the data from being sorted again. The flag is cleared whenever add_data
 is called.  Calling the method without an argument returns the value of
 the flag.
 
-=item $stat->percentile(25);
+=item $x = $stat->percentile(25);
+
+=item ($x, $index) = $stat->percentile(25);
 
 Sorts the data and returns the value that corresponds to the
-percentile as defined in RFC2330.
+percentile as defined in RFC2330:
+
+   For example, given the 6 measurements:
+
+   -2, 7, 7, 4, 18, -5
+
+   Then F(-8) = 0, F(-5) = 1/6, F(-5.0001) = 0, F(-4.999) = 1/6, F(7) =
+   5/6, F(18) = 1, F(239) = 1.
+
+   Note that we can recover the different measured values and how many
+   times each occurred from F(x) -- no information regarding the range
+   in values is lost.  Summarizing measurements using histograms, on the
+   other hand, in general loses information about the different values
+   observed, so the EDF is preferred.
+
+   Using either the EDF or a histogram, however, we do lose information
+   regarding the order in which the values were observed.  Whether this
+   loss is potentially significant will depend on the metric being
+   measured.
+
+   We will use the term "percentile" to refer to the smallest value of x
+   for which F(x) >= a given percentage.  So the 50th percentile of the
+   example above is 4, since F(4) = 3/6 = 50%; the 25th percentile is
+   -2, since F(-5) = 1/6 < 25%, and F(-2) = 2/6 >= 25%; the 100th
+   percentile is 18; and the 0th percentile is -infinity, as is the 15th
+   percentile.
+
+   Care must be taken when using percentiles to summarize a sample,
+   because they can lend an unwarranted appearance of more precision
+   than is really available.  Any such summary must include the sample
+   size N, because any percentile difference finer than 1/N is below the
+   resolution of the sample.
+
+taken from:
+RFC2330 - Framework for IP Performance Metrics,
+Section 11.3.  Defining Statistical Distributions
+
+rfc2330 is available from:
+http://www.cis.ohio-state.edu/htbin/rfc/rfc2330.html
+
+If the percentile method is called in a list context then it will
+also return the index of the percentile.
 
 =item $stat->median();
 
@@ -629,6 +682,8 @@ track it down.
 My email address can be found at www.perl.com under Who's Who.
 
 =head1 REFERENCES
+
+RFC2330, Framework for IP Performance Metrics
 
 The Art of Computer Programming, Volume 2, Donald Knuth.
 

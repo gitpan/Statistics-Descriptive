@@ -1,24 +1,7 @@
-This new version (2.3) of Statistics::Descriptive contains:
+This new version (2.4) of Statistics::Descriptive contains:
 
-- Code provided by Andrea Spinelli to prevent division by zero and to
-  make consistent return values for undefined behavior.
-
-- Andrea also wrote a great test bench to check out the division
-  by zero.  We'll be extending it to check for other things, too.
-
-- Code to calculate the percentile of the data as defined by RFC2330
-  Thanks to Warren Matthews for his contribution.
-
-- A bug fix for the calculation of frequency distributions.  Thanks to
-  Nick Tolli for alerting me to this.
-
-- Slight changes to the Makefile to make the ActiveState people happy.
-  Hey, if they're going to make Perl easy for Windows users then I
-  can add a few lines of text to a Makefile for them.
-
-Documentation was also added to show how to turn the return value
-of least_squares_fit into a hash.  If returning a hash is something
-that many of you users want then I'll add it to the next release.
+- Code to correctly calculate the percentile of the data as defined by
+  RFC2330.  Also included is RFC2330 for general reference.
 
 List of methods by class:
 

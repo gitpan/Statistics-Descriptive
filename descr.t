@@ -1,7 +1,7 @@
 
 require 'Descriptive.pm';
 
-print "1..7\n";
+print "1..9\n";
 
 $testct = 1;
 
@@ -67,3 +67,21 @@ $stat->add_data(0.1,
 $ok = ($f{0.216666666666667} == 3) &&
       ($f{0.333333333333333} == 1);
 print ( ($ok? '': 'not ' ) . 'ok ' . $testct++ . "\n" );
+
+# test #8 and #9
+# Test the percentile function and caching
+$stat = Statistics::Descriptive::Full->new();
+$stat->add_data(-5,-2,4,7,7,18);
+##Check algorithm
+if ( $stat->percentile(50) == 4 ) {
+  print "ok 8\n";
+}
+else {
+  print "not ok 8";
+}
+if ($stat->percentile(25) == -2) {
+  print "ok 9\n";
+}
+else {
+  print "not ok 9";
+}
