@@ -1,7 +1,14 @@
-This new version (2.4) of Statistics::Descriptive contains:
+This new version (2.5) of Statistics::Descriptive contains:
 
-- Code to correctly calculate the percentile of the data as defined by
-  RFC2330.  Also included is RFC2330 for general reference.
+- frequency_distribution was modified so that specific bins could be
+  defined.  Also, caching was fixed so that it works.
+
+- Lots of changes to the test suite to enhance coverage.
+
+- Caching was removed from least_squares_fit since it didn't make
+  sense.
+
+- Added user survey to distribution.
 
 List of methods by class:
 
@@ -35,28 +42,4 @@ geometric_mean
 frequency_distribution
 least_squares_fit
 
-Ideas for ongoing development:
-
-- re: Georg Fuellen
-  A function to define the "maxima" of a distribution.  In other words,
-  return an array that contains all data that falls within a given
-  confidence interval.
-
-- Move source to C and XS for speed improvements. (Interface to R or S?)
-
-- Move to PDL for a unified math solution and maybe take advantage of
-  their compact storage.
-
-- Methods for covariance and correlation.
-
-- An interface to Jon Orwant's Statistics::ChiSquare module to
-  provide a method for determining how random data is (for a uniform
-  distribution) or how well is fits another distribution (for
-  non-uniform distributions like normal(gaussian), log-normal,
-  rayleigh, etc).
-
-  The major issue I'm concerned about is the updating of someone else's
-  code and future extensibility.  Now, major paranoia should be obvious
-  since Jon hasn't changed Statistics::ChiSquare for a long, long
-  time.  Still, a wrapper module that inherits from several other
-  modules is appealing.  Perhaps it will be called Statistics::Bundle.
+ckuskie@cpan.org

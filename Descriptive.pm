@@ -5,7 +5,7 @@ package Statistics::Descriptive;
 require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
 		  ##Not only that, but it's the latest "safe" version of
 		  ##Perl5.  01-03 weren't bug free.
-$VERSION = '2.4';
+$VERSION = '2.6';
 
 $Tolerance = 0.0;
 
@@ -46,15 +46,23 @@ sub add_data {
   my $self = shift;  ##Myself
   my $oldmean;
   my ($min,$mindex,$max,$maxdex);
+  my $aref;
+
+  if (ref $_[0] eq 'ARRAY') {
+    $aref = $_[0];
+  }
+  else {
+    $aref = \@_;
+  }
 
   ##Take care of appending to an existing data set
-  $min    = (defined ($self->{min}) ? $self->{min} : $_[0]);
-  $max    = (defined ($self->{max}) ? $self->{max} : $_[0]);
+  $min    = (defined ($self->{min}) ? $self->{min} : $aref->[0]);
+  $max    = (defined ($self->{max}) ? $self->{max} : $aref->[0]);
   $maxdex = $self->{maxdex} || 0;
   $mindex = $self->{mindex} || 0;
 
   ##Calculate new mean, pseudo-variance, min and max;
-  foreach (@_) {
+  foreach ( @{ $aref } ) {
     $oldmean = $self->{mean};
     $self->{sum} += $_;
     $self->{count}++;
@@ -130,8 +138,16 @@ sub new {
 sub add_data {
   my $self = shift;
   my $key;
-  $self->SUPER::add_data(@_);  ##Perform base statistics on the data
-  push @{ $self->{data} }, @_;
+  my $aref;
+
+  if (ref $_[0] eq 'ARRAY') {
+    $aref = $_[0];
+  }
+  else {
+    $aref = \@_;
+  }
+  $self->SUPER::add_data($aref);  ##Perform base statistics on the data
+  push @{ $self->{data} }, @{ $aref };
   ##Clear the presorted flag
   $self->{'presorted'} = 0;
   ##Need to delete all cached keys
@@ -211,11 +227,17 @@ sub median {
 
 sub trimmed_mean {
   my $self = shift;
-  my $lower = shift; #Grab lower and upper bounds
-  my $upper = shift || $lower; #upper bound is in arg list or is same as lower
+  my ($lower,$upper);
+  #upper bound is in arg list or is same as lower
+  if (@_ == 1) {
+    ($lower,$upper) = ($_[0],$_[0]);
+  }
+  else {
+    ($lower,$upper) = ($_[0],$_[1]);
+  }
 
   ##Cache
-  my $thistm = join ':','tm','$lower','$upper';
+  my $thistm = join ':','tm',$lower,$upper;
   return $self->{$thistm} if defined $self->{$thistm};
 
   my $lower_trim = int ($self->{count}*$lower); 
@@ -290,19 +312,38 @@ sub frequency_distribution {
   return undef if $self->{count} < 2; #Must have at least two elements
 
   ##Cache
-  return %{$self->{frequency}} if defined $self->{frequency};
+  return %{$self->{frequency}}
+    if ((defined $self->{frequency}) and !@_);
 
   my %bins;
-  my $partitions   = shift;
-  return undef unless $partitions >= 1;
-  my $interval = $self->{sample_range}/$partitions;
-  my $iter = $self->{min};
-  while (($iter += $interval) <  $self->{max}) {
-    $bins{$iter} = 0;
-    push @k, $iter;  ##Keep the "keys" unstringified
+  my $partitions = shift;
+
+  if (ref($partitions) eq 'ARRAY') {
+    @k = @{ $partitions };
+    return undef unless @k;  ##Empty array
+    if (@k > 1) {
+      ##Check for monotonicity
+      $element = $k[0];
+      for (@k[1..$#k]) {
+	if ($element > $_) {
+	  carp "Non monotonic array cannot be used as frequency bins!\n";
+	  return undef;
+	}
+      }
+    }
+    %bins = map { $_ => 0 } @k;
   }
-  $bins{$self->{max}} = 0;
-  push @k, $self->{max};
+  else {
+    return undef unless $partitions >= 1;
+    my $interval = $self->{sample_range}/$partitions;
+    my $iter = $self->{min};
+    while (($iter += $interval) <  $self->{max}) {
+      $bins{$iter} = 0;
+      push @k, $iter;  ##Keep the "keys" unstringified
+    }
+    $bins{$self->{max}} = 0;
+    push @k, $self->{max};
+  }
 
   ELEMENT: foreach $element (@{$self->{data}}) {
     for (@k) {
@@ -318,8 +359,6 @@ sub frequency_distribution {
 sub least_squares_fit {
   my $self = shift;
   return () if $self->{count} < 2;
-  return @{ $self->{least_squares_fit} }
-	 if defined $self->{least_squares_fit};
 
   ##Sigma sums
   my ($sigmaxy, $sigmax, $sigmaxx, $sigmayy, $sigmay) = (0,0,0,0,$self->sum);
@@ -374,7 +413,7 @@ sub least_squares_fit {
     $iter++;
   }
 
-  $rms = sqrt($rms) / $count;
+  $rms = sqrt($rms / $count);
   return @{ $self->{least_squares_fit} } = ($q, $m, $r, $rms);
 }
 
@@ -414,6 +453,9 @@ greater than the value C<$Statistics::Descriptive::Tolerance>, which
 defaults to 0.0. You may want to change this value to some small
 positive value such as 1e-24 in order to obtain error messages in case
 of very small denominators.
+
+Many of the methods (both Sparse and Full) cache values so that subsequent
+calls with the same arguments are faster.
 
 =head1 METHODS
 
@@ -474,6 +516,10 @@ Returns the sample range (max - min) of the data set.
 
 =head2 Full Methods
 
+Similar to the Sparse Methods above, any Full Method that is called caches
+the current result so that it doesn't have to be recalculated.  In some
+cases, several values can be cached at the same time.
+
 =over 5
 
 =item $stat = Statistics::Descriptive::Full->new();
@@ -489,7 +535,8 @@ values are updated and cached.  Cached values from Full methods are
 deleted since they are no longer valid.  
 
 I<Note:  Calling add_data with an empty array will delete all of your
-Full method cached values!>
+Full method cached values!  Cached values for the sparse methods are
+not changed>
 
 =item $stat->get_data();
 
@@ -519,43 +566,48 @@ the flag.
 Sorts the data and returns the value that corresponds to the
 percentile as defined in RFC2330:
 
-   For example, given the 6 measurements:
+=over 4
 
-   -2, 7, 7, 4, 18, -5
+=item
 
-   Then F(-8) = 0, F(-5) = 1/6, F(-5.0001) = 0, F(-4.999) = 1/6, F(7) =
-   5/6, F(18) = 1, F(239) = 1.
+For example, given the 6 measurements:
 
-   Note that we can recover the different measured values and how many
-   times each occurred from F(x) -- no information regarding the range
-   in values is lost.  Summarizing measurements using histograms, on the
-   other hand, in general loses information about the different values
-   observed, so the EDF is preferred.
+-2, 7, 7, 4, 18, -5
 
-   Using either the EDF or a histogram, however, we do lose information
-   regarding the order in which the values were observed.  Whether this
-   loss is potentially significant will depend on the metric being
-   measured.
+Then F(-8) = 0, F(-5) = 1/6, F(-5.0001) = 0, F(-4.999) = 1/6, F(7) =
+5/6, F(18) = 1, F(239) = 1.
 
-   We will use the term "percentile" to refer to the smallest value of x
-   for which F(x) >= a given percentage.  So the 50th percentile of the
-   example above is 4, since F(4) = 3/6 = 50%; the 25th percentile is
-   -2, since F(-5) = 1/6 < 25%, and F(-2) = 2/6 >= 25%; the 100th
-   percentile is 18; and the 0th percentile is -infinity, as is the 15th
-   percentile.
+Note that we can recover the different measured values and how many
+times each occurred from F(x) -- no information regarding the range
+in values is lost.  Summarizing measurements using histograms, on the
+other hand, in general loses information about the different values
+observed, so the EDF is preferred.
 
-   Care must be taken when using percentiles to summarize a sample,
-   because they can lend an unwarranted appearance of more precision
-   than is really available.  Any such summary must include the sample
-   size N, because any percentile difference finer than 1/N is below the
-   resolution of the sample.
+Using either the EDF or a histogram, however, we do lose information
+regarding the order in which the values were observed.  Whether this
+loss is potentially significant will depend on the metric being
+measured.
 
-taken from:
-RFC2330 - Framework for IP Performance Metrics,
-Section 11.3.  Defining Statistical Distributions
+We will use the term "percentile" to refer to the smallest value of x
+for which F(x) >= a given percentage.  So the 50th percentile of the
+example above is 4, since F(4) = 3/6 = 50%; the 25th percentile is
+-2, since F(-5) = 1/6 < 25%, and F(-2) = 2/6 >= 25%; the 100th
+percentile is 18; and the 0th percentile is -infinity, as is the 15th
+percentile.
 
-rfc2330 is available from:
-http://www.cis.ohio-state.edu/htbin/rfc/rfc2330.html
+Care must be taken when using percentiles to summarize a sample,
+because they can lend an unwarranted appearance of more precision
+than is really available.  Any such summary must include the sample
+size N, because any percentile difference finer than 1/N is below the
+resolution of the sample.
+
+=back
+
+(Taken from:
+I<RFC2330 - Framework for IP Performance Metrics>,
+Section 11.3.  Defining Statistical Distributions.
+RFC2330 is available from:
+http://www.cis.ohio-state.edu/htbin/rfc/rfc2330.html.)
 
 If the percentile method is called in a list context then it will
 also return the index of the percentile.
@@ -587,17 +639,24 @@ lower end of the data and a fraction C<utrim> has been removed from the
 upper end of the data.  This method sorts the data before beginning
 to analyze it.
 
+All calls to trimmed_mean() are cached so that they don't have to be
+calculated a second time.
+
+=item $stat->frequency_distribution($partitions);
+
+=item $stat->frequency_distribution(\@bins);
+
 =item $stat->frequency_distribution();
 
-C<frequency_distribution(partitions)> slices the data into C<partition>
-sets (where partition is greater than 1) and counts the number of items
-that fall into each partition. It returns an associative array where
-the keys are the numerical values of the partitions used. The minimum
-value of the data set is not a key and the maximum value of the data
-set is always a key. The number of entries for a particular partition
-key are the number of items which are greater than the previous
-partition key and less then or equal to the current partition key. As
-an example,
+C<frequency_distribution($partitions)> slices the data into
+C<$partition> sets (where $partition is greater than 1) and counts the
+number of items that fall into each partition. It returns an
+associative array where the keys are the numerical values of the
+partitions used. The minimum value of the data set is not a key and the
+maximum value of the data set is always a key. The number of entries
+for a particular partition key are the number of items which are
+greater than the previous partition key and less then or equal to the
+current partition key. As an example,
 
    $stat->add_data(1,1.5,2,2.5,3,3.5,4);
    %f = $stat->frequency_distribution(2);
@@ -613,12 +672,22 @@ prints
 since there are four items less than or equal to 2.5, and 3 items
 greater than 2.5 and less than 4.
 
+C<frequency_distribution(\@bins)> provides the bins that are to be used
+for the distribution.  This allows for non-uniform distributions as
+well as trimmed or sample distributions to be found.  C<@bins> must
+be monotonic and contain at least one element.  Note that unless the
+set of bins contains the range that the total counts returned will
+be less than the sample size.
+
+Calling C<frequency_distribution()> with no arguments returns the last
+distribution calculated, if such exists.
+
 =item $stat->least_squares_fit();
 
 =item $stat->least_squares_fit(@x);
 
 C<least_squares_fit()> performs a least squares fit on the data,
-assuming a domain of C<@x> or a default of 1..$stat->count(); It
+assuming a domain of C<@x> or a default of 1..$stat->count().  It
 returns an array of four elements C<($q, $m, $r, $rms)> where
 
 =over 4
@@ -645,16 +714,17 @@ by doing the following:
   my %hash = ();
   @hash{'q', 'm', 'r', 'err'} = $stat->least_squares_fit();
 
+Because calling C<least_squares_fit()> with no arguments defaults
+to using the current range, there is no caching of the results.
+
 =back
 
 =head1 REPORTING ERRORS
 
-I read 4 of the 5 perl newsgroups
-comp.lang.perl.{misc,moderated,modules,announce} and check my email at
-work frequently, so please feel free to post errors to either or both
-of those places.  However, realize that if you post to the newsgroup it
-has the benefit of alerting other users of the problem.  When reporting
-errors, please include the following to help me out:
+I read my email frequently, but since adopting this module I've added 2
+children and 1 dog to my family, so please be patient about my response
+times.  When reporting errors, please include the following to help
+me out:
 
 =over 4
 
@@ -679,7 +749,12 @@ track it down.
 
 =back
 
-My email address can be found at www.perl.com under Who's Who.
+=head1 AUTHOR
+
+Colin Kuskie
+
+My email address can be found at http://www.perl.com under Who's Who
+or at: http://search.cpan.org/author/COLINK/.
 
 =head1 REFERENCES
 
