@@ -1,5 +1,10 @@
 Revision history for Perl extension Statistics::Descriptive.
 
+2.1   Monday Feb 23 1998
+	- Multiple bug fixes:
+	  Fixed min/max bug with '0' vs defined.
+	  Provided fix for bug with AUTOLOAD/DESTROY/Carp problem.
+
 2.1   Tues Sep 02 1997
 	- Multiple bug fixes:
 	  Cleaned up syntax error with my scoping. 

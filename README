@@ -1,28 +1,19 @@
-This updated release fixes several bugs introduced by the OO interface rewrite.
-Bugs were fixed in the least_squares_fit and median methods and a syntax
-error caused by "my" scoping was cleaned up.
+This new version (2.2) of Statistics::Descriptive contains:
 
-This is a complete rewrite of the OO interface to Statistics::Descriptive.
-A full description of the new interface can be found in the POD documentation
-inside the module, here are the highlights:
+- A bug fix for the calculation of min and max.  Thanks to Thomas Goetze
+  for alerting me to this (and supplying a solution).
 
-*  None of the underlying methods of calculation have been changed.
+- A bug fix for a strange bug when using AUTOLOAD and Carp.  Actually,
+  I benefitted from the bug.  If you use the AUTOLOAD from the perltoot
+  manpage and use Carp to provide "nice" error trapping from the module,
+  then the AUTOLOAD doesn't catch calls to DESTROY (which it is supposed
+  to do, technically).  If you use warn, then it catches the call to
+  DESTROY and prints the error message 'Unable to access method DESTROY
+  in class Statistics::Descriptive'.
 
-*  There are two separate, distinct classes in the module, Sparse and Full.
-   Full inherits from Sparse and extends it with storage of the data
-   and additional methods that depend on analyzing the data based on
-   user input (in general).  It should be easy to inherit from
-   either of the classes.
-
-*  Minimum and maximum methods are now calculated as part of the
-   Sparse class, resulting in a faster access to that data.
-
-*  The indices to the maxima and minima are also available.
-
-*  Methods were added to manually sort the data and prevent subsequent
-   sorting of the data, sort_data and presorted, respectively.  This
-   should speed up some of the analysis by not repeatedly sorting the
-   data.
+  Thanks to Terrence Brannon for alerting me to this.  He, running
+  perl5.003_07, has the AUTOLOAD method intermittently catch the
+  call even when Carp is being used.  Go figure...
 
 List of methods by class:
 
@@ -54,3 +45,17 @@ mode
 geometric_mean
 frequency_distribution
 least_squares_fit
+
+Ideas for ongoing development:
+
+- An interface to Jon Orwant's Statistics::ChiSquare module to
+  provide a method for determining how random data is (for a uniform
+  distribution) or how well is fits another distribution (for
+  non-uniform distributions like normal(gaussian), log-normal,
+  rayleigh, etc).
+
+  The major issue I'm concerned about is the updating of someone else's
+  code and future extensibility.  Now, major paranoia should be obvious
+  since Jon hasn't changed Statistics::ChiSquare for a long, long
+  time.  Still, a wrapper module that inherits from several other
+  modules is appealing.  Perhaps it will be called Statistics::Bundle.

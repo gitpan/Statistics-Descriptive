@@ -22,8 +22,8 @@ use Carp;
   sample_range		=> undef,
   );
 
-require 5.002;
-$VERSION = '2.1';
+require 5.004;  ##Yes, this is underhanded, but makes support for me easier
+$VERSION = '2.2';
 
 sub new {
   my $proto = shift;
@@ -42,8 +42,8 @@ sub add_data {
   my ($min,$mindex,$max,$maxdex);
 
   ##Take care of appending to an existing data set
-  $min    = $self->{min}    || $_[0];
-  $max    = $self->{max}    || $_[0];
+  $min    = (defined ($self->{min}) ? $self->{min} : $_[0]);
+  $max    = (defined ($self->{max}) ? $self->{max} : $_[0]);
   $maxdex = $self->{maxdex} || 0;
   $mindex = $self->{mindex} || 0;
 
@@ -82,6 +82,7 @@ sub AUTOLOAD {
     or croak "$self is not an object";
   my $name = $AUTOLOAD;
   $name =~ s/.*://;     ##Strip fully qualified-package portion
+  return if $name eq "DESTROY";
   unless (exists $self->{'_permitted'}->{$name} ) {
     croak "Can't access `$name' field in class $type";
   }
@@ -317,17 +318,10 @@ sub least_squares_fit {
 
 package Statistics::Descriptive;
 
+##All modules return true.
 1;
 
 __END__
-
-# Copyright (c) 1994,1995 Jason Kastner <jason@wagner.com>. All rights 
-# reserved. This program is free software; you can redistribute it and/or 
-# modify it under the same terms as Perl itself.
-
-# Copyright (c) 1997 Colin Kuskie <colink@latticesemi.com>. All rights 
-# reserved. This program is free software; you can redistribute it and/or 
-# modify it under the same terms as Perl itself.
 
 =head1 NAME
 
@@ -337,8 +331,7 @@ Statistics::Descriptive - Module of basic descriptive statistical functions.
 
   use Statistics::Descriptive;
   $stat = Statistics::Descriptive::Full->new();
-  $stat->add_data(1,2,3,4);
-  $mean = $stat->mean();
+  $stat->add_data(1,2,3,4); $mean = $stat->mean();
   $var  = $stat->variance();
   $tm   = $stat->trimmed_mean(.25);
 
@@ -414,16 +407,18 @@ Returns the sample range (max - min) of the data set.
 
 =item $stat = Statistics::Descriptive::Full->new();
 
-Create a new statistics object that with
-Statistics::Descriptive::Sparse as its base method so that it inherits
-all the methods described above.
+Create a new statistics object that inherits from
+Statistics::Descriptive::Sparse so that it contains all the methods
+described above.
 
 =item $stat->add_data(1,2,4,5);
 
 Adds data to the statistics variable.  All of the sparse statistical
 values are updated and cached.  Cached values from full methods are
-deleted since they are no longer valid.  Note:  Calling add_data
-with an empty array will delete all of your cached values!
+deleted since they are no longer valid.  
+
+B<Note:  Calling add_data with an empty array will delete all of your
+cached values!>
 
 =item $stat->get_data();
 
@@ -431,7 +426,8 @@ Returns a copy of the data array.
 
 =item $stat->sort_data();
 
-Sort the stored data and update the mindex and maxdex methods.
+Sort the stored data and update the mindex and maxdex methods.  This
+method uses perl's internal sort.
 
 =item $stat->presorted(1);
 
@@ -495,11 +491,40 @@ greater than 2.5 and less than 4.
 
 =item $stat->least_squares_fit();
 
+=item $stat->least_squares_fit(@x);
+
 C<least_squares_fit()> performs a least squares fit on the data, assuming
 a domain of 1,2,3... It returns an array of two elements; the value in the 
 zeroth position is the constant (x^0) term and the value in the first 
 position is the coeffiecient of the x^1 term. C<least_squares_fit(@x)> uses 
 the values in C<@x> as the domain.
+
+=back
+
+=head1 REPORTING ERRORS
+
+When reporting errors, please include the following to help me out:
+
+=over 4
+
+=item *
+
+Your version of perl.  This can be obtained by typing perl C<-v> at
+the command line.
+
+=item *
+
+Which version of Statistics::Descriptive you're using.  As you can
+see below, I do make mistakes.  Unfortunately for me, right now
+there are thousands of CD's with the version of this module with
+the bugs in it.  Fortunately for you, I'm a very patient module
+maintainer.
+
+=item *
+
+Details about what the error is.  Try to narrow down the scope
+of the problem and send me code that I can run to verify and
+track it down.
 
 =back
 
@@ -513,7 +538,7 @@ Probability and Statistics for Engineering and the Sciences, Jay Devore.
 
 =head1 COPYRIGHT
 
-Copyright (c) 1997 Colin Kuskie <colink@latticesemi.com>. All rights reserved. 
+Copyright (c) 1997,1998 Colin Kuskie <colink@latticesemi.com>. All rights reserved. 
 This program is free software; you can redistribute it and/or modify it 
 under the same terms as Perl itself.
 
@@ -523,29 +548,59 @@ under the same terms as Perl itself.
 
 =head1 REVISION HISTORY
 
+=item v2.2
+
+Rolled into March 1998.
+
+Fixed problem with sending 0's and -1's as data.  The old 0 : true ? false
+thing.  Use defined to fix.
+
+Provided a fix for AUTOLOAD/DESTROY/Carp bug.  Very strange.
+
+=item v2.1
+
+August 1997
+
+Fixed errors in statistics algorithms caused by changing the
+interface.
+
 =item v2.0
 
-August 1997 - Fixed errors in removing cached values (they weren't being
-              removed!) and added sort_data and presorted methods.
+August 1997
 
-June 1997 - Rewrote OO interface, modified function distribution,
-            added mindex, maxdex.
+Fixed errors in removing cached values (they weren't being removed!)
+and added sort_data and presorted methods.
+
+June 1997
+
+Transferred ownership of the module from Jason to Colin.
+
+Rewrote OO interface, modified function distribution, added mindex,
+maxdex.
 
 =item v1.1
 
-April 1995 - Added LeastSquaresFit and FrequencyDistribution.
+April 1995
+
+Added LeastSquaresFit and FrequencyDistribution.
 
 =item v1.0 
 
-March 1995 - Released to comp.lang.perl and placed on archive sites.
+March 1995
+
+Released to comp.lang.perl and placed on archive sites.
 
 =item v.20
 
-December 1994 - Complete rewrite after extensive and invaluable e-mail 
+December 1994
+
+Complete rewrite after extensive and invaluable e-mail 
 correspondence with Anno Siegel.
 
 =item v.10
 
-December 1994 - Initital concept, released to perl5-porters list.
+December 1994
+
+Initital concept, released to perl5-porters list.
 
 =cut
