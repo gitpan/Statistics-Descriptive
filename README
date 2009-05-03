@@ -1,3 +1,42 @@
+INSTALLATION
+
+To install this module, run the following commands:
+
+	perl Build.PL
+	./Build
+	./Build test
+	./Build install
+
+SUPPORT AND DOCUMENTATION
+
+After installing, you can find documentation for this module with the
+perldoc command.
+
+    perldoc Statistics::Descriptive
+
+You can also look for information at:
+
+    RT, CPAN's request tracker
+        http://rt.cpan.org/NoAuth/Bugs.html?Dist=Statistics-Descriptive
+
+    AnnoCPAN, Annotated CPAN documentation
+        http://annocpan.org/dist/Statistics-Descriptive
+
+    CPAN Ratings
+        http://cpanratings.perl.org/d/Statistics-Descriptive
+
+    Search CPAN
+        http://search.cpan.org/dist/Statistics-Descriptive
+
+COPYRIGHT AND LICENCE
+
+This program is released under the following license: perl
+
+------------
+
+Old README:
+===========
+
 This new version (2.5) of Statistics::Descriptive contains:
 
 - frequency_distribution was modified so that specific bins could be
