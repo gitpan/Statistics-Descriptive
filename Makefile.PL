@@ -9,6 +9,7 @@ WriteMakefile
                            'Carp' => 0,
                            'POSIX' => 0,
                            'Test::More' => 0,
+                           'lib' => 0,
                            'strict' => 0,
                            'vars' => 0,
                            'warnings' => 0

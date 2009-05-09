@@ -9,6 +9,58 @@ use Test::More tests => 14;
 use Benchmark;
 use Statistics::Descriptive;
 
+sub compare_hash_by_ranges
+{
+    local $Test::Builder::Level = $Test::Builder::Level + 1;
+    
+    my $got_hash_ref = shift;
+    my $expected = shift;
+    my $blurb = shift;
+
+    my $got = 
+        [
+            map { [$_, $got_hash_ref->{$_} ] }
+            sort { $a <=> $b }
+            keys(%$got_hash_ref)
+        ]
+        ;
+
+    my $success = 1;
+
+    if (scalar(@$expected) != scalar(@$got))
+    {
+        $success = 0;
+        diag("Number of keys differ in hashes.");
+    }
+    else
+    {
+        COMPARE_KEYS:
+        for my $idx (0 .. $#$got)
+        {
+            my ($got_key, $got_val) = @{$got->[$idx]};
+            my ($expected_bottom, $expected_top, $expected_val)
+                = @{$expected->[$idx]};
+            
+            if (! (    ($got_key >= $expected_bottom)
+                    && ($got_key <= $expected_top)
+                    && ($got_val == $expected_val)
+                )
+            )
+            {
+                $success = 0;
+                diag(<<"EOF");
+Key/Val pair No. $idx is out of range or wrong:
+Got: [$got_key, $got_val]
+Expected: [$expected_bottom, $expected_top, $expected_val]
+EOF
+                
+                last COMPARE_KEYS;
+            }
+        }
+    }
+
+    ok($success, $blurb);
+}
 # print "1..14\n";
 
 # test #1
@@ -74,6 +126,8 @@ ok (scalar(abs( $single_result - 1.6363 ) < 0.001),
     "test normal function of harmonic mean",
 );
 
+
+
 # test #7
 # test stringification of hash keys in frequency distribution
 $stat = Statistics::Descriptive::Full->new();
@@ -84,9 +138,10 @@ $stat->add_data(0.1,
 my %f = $stat->frequency_distribution(2);
 
 # TEST
-ok ((($f{0.216666666666667} == 3) &&
-      ($f{0.333333333333333} == 1)),
-    "test stringification of hash keys in frequency distribution"
+compare_hash_by_ranges(
+    \%f,
+    [[0.216666,0.216667,3],[0.3333,0.3334,1]],
+    "Test stringification of hash keys in frequency distribution",
 );
 
 # test #8
@@ -116,14 +171,16 @@ $stat->add_data(23.92,
 %f = $stat->frequency_distribution(\@freq_bins);
 
 # TEST
-ok (
-    (($f{20} == 3) &&
-      ($f{40} == 5) &&
-      ($f{60} == 1) &&
-      ($f{80} == 1) &&
-      ($f{100} == 0)
-    ),
-    "test the frequency distribution with specified bins"
+is_deeply(
+    \%f,
+    {
+        20 => 3,
+        40 => 5,
+        60 => 1,
+        80 => 1,
+        100 => 0,
+    },
+    "Test the frequency distribution with specified bins"
 );
 
 # test #10 and #11
