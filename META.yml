@@ -1,6 +1,6 @@
 ---
 name: Statistics-Descriptive
-version: 2.8
+version: 2.9
 author:
   - 'Shlomi Fish <shlomif@iglu.org.il>'
 abstract: Module of basic descriptive statistical functions.
@@ -22,7 +22,7 @@ build_requires:
 provides:
   Statistics::Descriptive:
     file: lib/Statistics/Descriptive.pm
-    version: 2.8
+    version: 2.9
   Statistics::Descriptive::Full:
     file: lib/Statistics/Descriptive.pm
   Statistics::Descriptive::Sparse:
