@@ -10,14 +10,64 @@ require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
 		  ##Perl5.  01-03 weren't bug free.
 use vars (qw($VERSION $Tolerance));
 
-$VERSION = '2.9';
+$VERSION = '3.0000';
 
 $Tolerance = 0.0;
 
 package Statistics::Descriptive::Sparse;
 
-use vars qw($AUTOLOAD %fields);
+use vars qw(%fields);
 use Carp;
+
+sub _make_accessors
+{
+    my ($pkg, $methods) = @_;
+
+    no strict 'refs';
+    foreach my $method (@$methods)
+    {
+        *{$pkg."::".$method} =
+            do {
+                my $m = $method;
+                sub {
+                    my $self = shift;
+
+                    if (@_)
+                    {
+                        $self->{$m} = shift;
+                    }
+                    return $self->{$m};
+                };
+            };
+    }
+
+    return;
+}
+
+sub _make_private_accessors
+{
+    my ($pkg, $methods) = @_;
+
+    no strict 'refs';
+    foreach my $method (@$methods)
+    {
+        *{$pkg."::_".$method} =
+            do {
+                my $m = $method;
+                sub {
+                    my $self = shift;
+
+                    if (@_)
+                    {
+                        $self->{$m} = shift;
+                    }
+                    return $self->{$m};
+                };
+            };
+    }
+
+    return;
+}
 
 ##Define the fields to be used as methods
 %fields = (
@@ -25,23 +75,35 @@ use Carp;
   mean			=> 0,
   sum			=> 0,
   sumsq			=> 0,
-  variance		=> undef,
   min			=> undef,
   max			=> undef,
   mindex		=> undef,
   maxdex		=> undef,
   sample_range		=> undef,
+  variance => undef,
   );
+
+__PACKAGE__->_make_accessors( [ grep { $_ ne "variance" } keys(%fields) ] );
+__PACKAGE__->_make_accessors( ["_permitted"] );
+__PACKAGE__->_make_private_accessors(["variance"]);
 
 sub new {
   my $proto = shift;
   my $class = ref($proto) || $proto;
   my $self = {
     %fields,
-    _permitted => \%fields,
   };
   bless ($self, $class);
+  $self->_permitted(\%fields);
   return $self;
+}
+
+sub _is_permitted
+{
+    my $self = shift;
+    my $key = shift;
+
+    return exists($self->_permitted()->{$key});
 }
 
 sub add_data {
@@ -61,13 +123,28 @@ sub add_data {
   return 1 if (!@{ $aref });
 
   ##Take care of appending to an existing data set
-  $min    = (defined ($self->{min}) ? $self->{min} : $aref->[0]);
-  $max    = (defined ($self->{max}) ? $self->{max} : $aref->[0]);
-  $maxdex = $self->{maxdex} || 0;
-  $mindex = $self->{mindex} || 0;
-  $sum = $self->{sum};
-  $sumsq = $self->{sumsq};
-  $count = $self->{count};
+  
+  if (!defined($min = $self->min()))
+  {
+      $min = $aref->[$mindex = 0];
+  }
+  else
+  {
+      $mindex = $self->mindex();
+  }
+
+  if (!defined($max = $self->max()))
+  {
+      $max = $aref->[$maxdex = 0];
+  }
+  else
+  {
+      $maxdex = $self->maxdex();
+  }
+
+  $sum = $self->sum();
+  $sumsq = $self->sumsq();
+  $count = $self->count();
 
   ##Calculate new mean, sumsq, min and max;
   foreach ( @{ $aref } ) {
@@ -84,39 +161,38 @@ sub add_data {
     }
   }
 
-  $self->{min}          = $min;
-  $self->{mindex}       = $mindex;
-  $self->{max}          = $max;
-  $self->{maxdex}       = $maxdex;
-  $self->{sample_range} = $max - $min;
-  $self->{sum}		= $sum;
-  $self->{sumsq}	= $sumsq;
-  $self->{mean}		= $sum / $count;
-  $self->{count}	= $count;
+  $self->min($min);
+  $self->mindex($mindex);
+  $self->max($max);
+  $self->maxdex($maxdex);
+  $self->sample_range($max - $min);
+  $self->sum($sum);
+  $self->sumsq($sumsq);
+  $self->mean($sum / $count);
+  $self->count($count);
   ##indicator the value is not cached.  Variance isn't commonly enough
   ##used to recompute every single data add.
-  $self->{variance}	= undef;
+  $self->_variance(undef());
   return 1;
 }
 
 sub standard_deviation {
   my $self = shift;  ##Myself
-  return undef if (!$self->{count});
-  return sqrt(variance($self));
+  return undef if (!$self->count());
+  return sqrt($self->variance());
 }
 
 ##Return variance; if needed, compute and cache it.
 sub variance {
   my $self = shift;  ##Myself
   my $div = @_ ? 0 : 1;
-  my $count = $self->{count};
+  my $count = $self->count();
   if ($count < 1 + $div) {
       return 0;
   }
 
-  my $variance = $self->{variance};
-  if (!defined($variance)) {
-    $variance = ($self->{sumsq} - $count * $self->{mean}**2);
+  if (!defined($self->_variance())) {
+    my $variance = ($self->sumsq()- $count * $self->mean()**2);
 
     # Sometimes due to rounding errors we get a number below 0.
     # This makes sure this is handled as gracefully as possible.
@@ -131,9 +207,9 @@ sub variance {
 
     $variance /= $count - $div;
 
-    $self->{variance} = $variance;
+    $self->_variance($variance);
   }
-  return $variance;
+  return $self->_variance();
 }
 
 ##Clear a stat.  More efficient than destroying an object and calling
@@ -142,24 +218,10 @@ sub clear {
   my $self = shift;  ##Myself
   my $key;
 
-  return if (!$self->{count});
+  return if (!$self->count());
   while (my($field, $value) = each %fields) {
     $self->{$field} = $value;
   }
-}
-
-sub AUTOLOAD {
-  my $self = shift;
-  my $type = ref($self)
-    or croak "$self is not an object";
-  my $name = $AUTOLOAD;
-  $name =~ s/.*://;     ##Strip fully qualified-package portion
-  return if $name eq "DESTROY";
-  unless (exists $self->{'_permitted'}->{$name} ) {
-    croak "Can't access `$name' field in class $type";
-  }
-  ##Read only method 
-  return $self->{$name};
 }
 
 1;
@@ -182,43 +244,81 @@ use vars qw(@ISA $a $b %fields);
   _reserved  => undef,  ##Place holder for this lookup hash
 );
 
+__PACKAGE__->_make_private_accessors(
+    [qw(data frequency geometric_mean harmonic_mean 
+        least_squares_fit median mode
+       )
+    ]
+);
+__PACKAGE__->_make_accessors([qw(presorted _reserved _trimmed_mean_cache)]);
+
+sub _clear_fields
+{
+    my $self = shift;
+
+    # Empty array ref for holding data later!
+    $self->_data([]);
+    $self->_reserved(\%fields);
+    $self->presorted(0);
+    $self->_trimmed_mean_cache(+{});
+
+    return;
+}
+
 ##Have to override the base method to add the data to the object
 ##The proxy method from above is still valid
 sub new {
   my $proto = shift;
   my $class = ref($proto) || $proto;
-  my $self = $class->SUPER::new();  ##Create my self re SUPER
-  $self->{data} = [];   ##Empty array ref for holding data later!
-  $self->{'_reserved'} = \%fields;
-  $self->{presorted} = 0;
+  # Create my self re SUPER
+  my $self = $class->SUPER::new();  
   bless ($self, $class);  #Re-anneal the object
+  $self->_clear_fields();
   return $self;
+}
+
+sub _is_reserved
+{
+    my $self = shift;
+    my $field = shift;
+
+    return exists($self->_reserved->{$field});
+}
+
+sub _delete_all_cached_keys
+{
+    my $self = shift;
+
+    KEYS_LOOP:
+    foreach my $key (keys %{ $self }) { # Check each key in the object
+        # If it's a reserved key for this class, keep it
+        if ($self->_is_reserved($key) || $self->_is_permitted($key))
+        {
+            next KEYS_LOOP;
+        }
+        delete $self->{$key};          # Delete the out of date cached key
+    }
+    return;
 }
 
 ##Clear a stat.  More efficient than destroying an object and calling
 ##new.
 sub clear {
-  my $self = shift;  ##Myself
-  my $key;
+    my $self = shift;  ##Myself
+    my $key;
 
-  return if (!$self->{count});
-  foreach $key (keys %{ $self }) { # Check each key in the object
-    # If it's a reserved key for this class, keep it
-    next if exists $self->{'_reserved'}->{$key};
-    # If it comes from the base class, keep it
-    next if exists $self->{'_permitted'}->{$key};
-    delete $self->{$key};          # Delete the out of date cached key
-  }
-  $self->SUPER::clear();
-  if (exists($self->{data})) {
-    $self->{data} = [];
-    $self->{presorted} = 0;
-  }
+    if (!$self->count())
+    {
+        return;
+    }
+
+    $self->_delete_all_cached_keys();
+    $self->SUPER::clear();
+    $self->_clear_fields();
 }
 
 sub add_data {
   my $self = shift;
-  my $key;
   my $aref;
 
   if (ref $_[0] eq 'ARRAY') {
@@ -228,45 +328,34 @@ sub add_data {
     $aref = \@_;
   }
   $self->SUPER::add_data($aref);  ##Perform base statistics on the data
-  push @{ $self->{data} }, @{ $aref };
+  push @{ $self->_data() }, @{ $aref };
   ##Clear the presorted flag
-  $self->{'presorted'} = 0;
-  ##Need to delete all cached keys
-  foreach $key (keys %{ $self }) { # Check each key in the object
-    # If it's a reserved key for this class, keep it
-    next if exists $self->{'_reserved'}->{$key};
-    # If it comes from the base class, keep it
-    next if exists $self->{'_permitted'}->{$key};
-    delete $self->{$key};          # Delete the out of date cached key
-  }
+  $self->presorted(0);
+
+  $self->_delete_all_cached_keys();
+
   return 1;
 }
 
 sub get_data {
   my $self = shift;
-  return @{ $self->{data} };
+  return @{ $self->_data() };
 }
 
 sub sort_data {
   my $self = shift;
-  ##Sort the data in descending order
-  $self->{data} = [ sort {$a <=> $b} @{$self->{data}} ];
-  $self->presorted(1);
-  ##Fix the maxima and minima indices
-  $self->{mindex} = 0;
-  $self->{maxdex} = $#{$self->{data}};
-  return 1;
-}
 
-sub presorted {
-  my $self = shift;
-  if ($@) {  ##Assign
-    $self->{'presorted'} = shift;
-    return 1;
+  if (! $self->presorted())
+  {
+      ##Sort the data in descending order
+      $self->_data([ sort {$a <=> $b} @{$self->_data()} ]);
+      $self->presorted(1);
+      ##Fix the maxima and minima indices
+      $self->mindex(0);
+      $self->maxdex($#{$self->_data()});
   }
-  else {  ##Inquire
-    return $self->{'presorted'};
-  }
+
+  return 1;
 }
 
 sub percentile {
@@ -278,167 +367,289 @@ sub percentile {
   ##If the requested percentile is less than the "percentile bin
   ##size" then return undef.  Check description of RFC 2330 in the
   ##POD below.
-  my $count = $self->{'count'};
+  my $count = $self->count();
   return undef if $percentile < 100 / $count;
 
-  $self->sort_data() unless $self->{'presorted'};
+  $self->sort_data();
   my $num = $count*$percentile/100;
   my $index = &POSIX::ceil($num) - 1;
+  my $val = $self->_data->[$index];
   return wantarray
-    ?  (${ $self->{data} }[ $index ], $index)
-    :   ${ $self->{data} }[ $index ];
+    ? ($val, $index)
+    : $val
+    ;
+}
+
+sub _calc_new_median
+{
+    my $self = shift;
+    my $count = $self->count();
+
+    ##Even or odd
+    if ($count % 2)
+    {   
+        return $self->_data->[($count-1)/2];
+    }
+    else
+    {
+        return
+        (
+            ($self->_data->[($count)/2] + $self->_data->[($count-2)/2] ) / 2
+        );
+    }
 }
 
 sub median {
-  my $self = shift;
+    my $self = shift;
 
-  ##Cached?
-  return $self->{median} if defined $self->{median};
-
-  $self->sort_data() unless $self->{'presorted'};
-  my $count = $self->{count};
-  if ($count % 2) {   ##Even or odd
-    return $self->{median} = @{ $self->{data} }[($count-1)/2];
-  }
-  else {
-    return $self->{median} =
-	   (@{$self->{data}}[($count)/2] + @{$self->{data}}[($count-2)/2] ) / 2;
-  }
-}
-
-sub trimmed_mean {
-  my $self = shift;
-  my ($lower,$upper);
-  #upper bound is in arg list or is same as lower
-  if (@_ == 1) {
-    ($lower,$upper) = ($_[0],$_[0]);
-  }
-  else {
-    ($lower,$upper) = ($_[0],$_[1]);
-  }
-
-  ##Cache
-  my $thistm = join ':','tm',$lower,$upper;
-  return $self->{$thistm} if defined $self->{$thistm};
-
-  my $lower_trim = int ($self->{count}*$lower); 
-  my $upper_trim = int ($self->{count}*$upper); 
-  my ($val,$oldmean) = (0,0);
-  my ($tm_count,$tm_mean,$index) = (0,0,$lower_trim);
-
-  $self->sort_data() unless $self->{'presorted'};
-  while ($index <= $self->{count} - $upper_trim -1) {
-    $val = @{ $self->{data} }[$index];
-    $oldmean = $tm_mean;
-    $index++;
-    $tm_count++;
-    $tm_mean += ($val - $oldmean) / $tm_count;
-  }
-  return $self->{$thistm} = $tm_mean;
-}
-
-sub harmonic_mean {
-  my $self = shift;
-  return $self->{harmonic_mean} if defined $self->{harmonic_mean};
-  my $hs = 0;
-  for (@{ $self->{data} }) {
-    ##Guarantee that there are no divide by zeros
-    return $self->{harmonic_mean} = undef
-      unless abs($_) > $Statistics::Descriptive::Tolerance;
-    $hs += 1/$_;
-  }
-  return $self->{harmonic_mean} = undef
-    unless abs($hs) > $Statistics::Descriptive::Tolerance;
-  return $self->{harmonic_mean} = $self->{count}/$hs;
-}
-
-sub mode {
-  my $self = shift;
-  return $self->{mode} if defined $self->{mode};
-  my ($md,$occurances,$flag) = (0,0,1);
-  my %count;
-  foreach (@{ $self->{data} }) {
-    $count{$_}++;
-    $flag = 0 if ($count{$_} > 1);
-  }
-  #Distribution is flat, no mode exists
-  if ($flag) {
-    return undef;
-  }
-  foreach (keys %count) {
-    if ($count{$_} > $occurances) {
-      $occurances = $count{$_};
-      $md = $_;
+    ##Cached?
+    if (! defined($self->_median()))
+    {
+        $self->sort_data();
+        $self->_median($self->_calc_new_median());
     }
-  }
-  return $self->{mode} = $md;
+    return $self->_median();
+}
+
+sub _real_calc_trimmed_mean
+{
+    my $self = shift;
+    my $lower = shift;
+    my $upper = shift;
+
+    my $lower_trim = int ($self->count()*$lower); 
+    my $upper_trim = int ($self->count()*$upper); 
+    my ($val,$oldmean) = (0,0);
+    my ($tm_count,$tm_mean,$index) = (0,0,$lower_trim);
+
+    $self->sort_data();
+    while ($index <= $self->count() - $upper_trim -1)
+    {
+        $val = $self->_data()->[$index];
+        $oldmean = $tm_mean;
+        $index++;
+        $tm_count++;
+        $tm_mean += ($val - $oldmean) / $tm_count;
+    }
+
+    return $tm_mean;
+}
+
+sub trimmed_mean
+{
+    my $self = shift;
+    my ($lower,$upper);
+    #upper bound is in arg list or is same as lower
+    if (@_ == 1)
+    {
+        ($lower,$upper) = ($_[0],$_[0]);
+    }
+    else
+    {
+        ($lower,$upper) = ($_[0],$_[1]);
+    }
+
+    ##Cache
+    my $thistm = join ':',$lower,$upper;
+    my $cache = $self->_trimmed_mean_cache();
+    if (!exists($cache->{$thistm}))
+    {
+        $cache->{$thistm} = $self->_real_calc_trimmed_mean($lower, $upper);
+    }
+
+    return $cache->{$thistm};
+}
+
+sub _test_for_too_small_val
+{
+    my $self = shift;
+    my $val = shift;
+
+    return (abs($val) <= $Statistics::Descriptive::Tolerance);
+}
+
+sub _calc_harmonic_mean
+{
+    my $self = shift;
+
+    my $hs = 0;
+
+    foreach my $item ( @{$self->_data()} )
+    {
+        ##Guarantee that there are no divide by zeros
+        if ($self->_test_for_too_small_val($item))
+        {
+            return;
+        }
+
+        $hs += 1/$item;
+    }
+
+    if ($self->_test_for_too_small_val($hs))
+    {
+        return;
+    }
+
+    return $self->count()/$hs;
+}
+
+sub harmonic_mean
+{
+    my $self = shift;
+
+    if (!defined($self->_harmonic_mean()))
+    {
+        $self->_harmonic_mean(scalar($self->_calc_harmonic_mean()));
+    }
+
+    return $self->_harmonic_mean();
+}
+
+sub mode
+{
+    my $self = shift;
+
+    if (!defined ($self->_mode()))
+    {
+        my $mode = 0;
+        my $occurances= 0;
+        my $flag = 1;
+
+        my %count;
+
+        foreach my $item (@{ $self->_data() })
+        {
+            $count{$item}++;
+            $flag = 0 if ($count{$item} > 1);
+        }
+
+        #Distribution is flat - no mode exists
+        if ($flag)
+        {
+            return undef;
+        }
+
+        foreach my $val (keys %count)
+        {
+            if ($count{$val} > $occurances)
+            {
+                $occurances = $count{$val};
+                $mode = $val;
+            }
+        }
+
+        $self->_mode($mode);
+    }
+
+    return $self->_mode();
 }
 
 sub geometric_mean {
-  my $self = shift;
-  return $self->{geometric_mean} if defined $self->{geometric_mean};
-  my $gm = 1;
-  my $exponent = 1/$self->{count};
-  for (@{ $self->{data} }) {
-    return undef if $_ < 0;
-    $gm *= $_**$exponent;
-  }
-  return $self->{geometric_mean} = $gm;
+    my $self = shift;
+
+    if (!defined($self->_geometric_mean()))
+    {
+        my $gm = 1;
+        my $exponent = 1/$self->count();
+
+        for my $val (@{ $self->_data() })
+        {
+            if ($val < 0)
+            {
+                return undef;
+            }
+            $gm *= $val**$exponent;
+        }
+
+        $self->_geometric_mean($gm);
+    }
+
+    return $self->_geometric_mean();
+}
+
+sub frequency_distribution_ref
+{
+    my $self = shift;
+    my @k = ();
+    # Must have at least two elements
+    if ($self->count() < 2)
+    {
+        return undef;
+    }
+
+    if ((!@_) && (defined $self->_frequency()))
+    {
+        return $self->_frequency()
+    }
+
+    my %bins;
+    my $partitions = shift;
+
+    if (ref($partitions) eq 'ARRAY')
+    {
+        @k = @{ $partitions };
+        return undef unless @k;  ##Empty array
+        if (@k > 1) {
+            ##Check for monotonicity
+            my $element = $k[0];
+            for my $next_elem (@k[1..$#k]) {
+                if ($element > $next_elem) {
+                    carp "Non monotonic array cannot be used as frequency bins!\n";
+                    return undef;
+                }
+                $element = $next_elem;
+            }
+        }
+        %bins = map { $_ => 0 } @k;
+    }
+    else
+    {
+        return undef unless $partitions >= 1;
+        my $interval = $self->sample_range() / $partitions;
+        foreach my $idx (1 .. ($partitions-1))
+        {
+            push @k, ($self->min() + $idx * $interval);
+        }
+
+        $bins{$self->max()} = 0;
+
+        push @k, $self->max();
+    }
+
+    ELEMENT:
+    foreach my $element (@{$self->_data()})
+    {
+        foreach my $limit (@k)
+        {
+            if ($element <= $limit)
+            {
+                $bins{$limit}++;
+                next ELEMENT;
+            }
+        }
+    }
+
+    return $self->_frequency(\%bins);
 }
 
 sub frequency_distribution {
-  my $self = shift;
-  my $element;
-  my @k = ();
-  return undef if $self->{count} < 2; #Must have at least two elements
+    my $self = shift;
 
-  ##Cache
-  return %{$self->{frequency}}
-    if ((defined $self->{frequency}) and !@_);
+    my $ret = $self->frequency_distribution_ref(@_);
 
-  my %bins;
-  my $partitions = shift;
-
-  if (ref($partitions) eq 'ARRAY') {
-    @k = @{ $partitions };
-    return undef unless @k;  ##Empty array
-    if (@k > 1) {
-      ##Check for monotonicity
-      $element = $k[0];
-      for my $next_elem (@k[1..$#k]) {
-        if ($element > $next_elem) {
-          carp "Non monotonic array cannot be used as frequency bins!\n";
-          return undef;
-        }
-        $element = $next_elem;
-      }
+    if (!defined($ret))
+    {
+        return undef;
     }
-    %bins = map { $_ => 0 } @k;
-  }
-  else {
-    return undef unless $partitions >= 1;
-    my $interval = $self->{sample_range}/$partitions;
-    foreach my $idx (1 .. ($partitions-1)) {
-        push @k, ($self->{min} + $idx * $interval);
+    else
+    {
+        return %$ret;
     }
-    $bins{$self->{max}} = 0;
-    push @k, $self->{max};
-  }
-
-  ELEMENT: foreach $element (@{$self->{data}}) {
-    for (@k) {
-      if ($element <= $_) {
-        $bins{$_}++;
-        next ELEMENT;
-      }
-    }
-  }
-  return %{$self->{frequency}} = %bins;
 }
 
 sub least_squares_fit {
   my $self = shift;
-  return () if $self->{count} < 2;
+  return () if $self->count() < 2;
 
   ##Sigma sums
   my ($sigmaxy, $sigmax, $sigmaxx, $sigmayy, $sigmay) = (0,0,0,0,$self->sum);
@@ -446,24 +657,24 @@ sub least_squares_fit {
 
   ##Work variables
   my ($iter,$y,$x,$denom) = (0,0,0,0);
-  my $count = $self->{count};
+  my $count = $self->count();
   my @x;
 
   ##Outputs
   my ($m, $q, $r, $rms);
 
   if (!defined $_[1]) {
-    @x = 1..$self->{count};
+    @x = 1..$self->count();
   }
   else {
     @x = @_;
-    if ( $self->{count} != scalar @x) {
+    if ( $self->count() != scalar @x) {
       carp "Range and domain are of unequal length.";
       return ();
     }
   }
   foreach $x (@x) {
-    $y = $self->{data}[$iter];
+    $y = $self->_data->[$iter];
     $sigmayy += $y * $y;
     $sigmaxx += $x * $x;
     $sigmaxy += $x * $y;
@@ -488,13 +699,16 @@ sub least_squares_fit {
   $rms = 0.0;
   foreach (@x) {
     ##Error = Real y - calculated y
-    $err = $self->{data}[$iter] - ( $m * $_ + $q );
+    $err = $self->_data->[$iter] - ( $m * $_ + $q );
     $rms += $err*$err;
     $iter++;
   }
 
   $rms = sqrt($rms / $count);
-  return @{ $self->{least_squares_fit} } = ($q, $m, $r, $rms);
+  
+  $self->_least_squares_fit([$q, $m, $r, $rms]);
+
+  return @{ $self->_least_squares_fit() };
 }
 
 1;
@@ -732,16 +946,16 @@ to analyze it.
 All calls to trimmed_mean() are cached so that they don't have to be
 calculated a second time.
 
-=item $stat->frequency_distribution($partitions);
+=item $stat->frequency_distribution_ref($partitions);
 
-=item $stat->frequency_distribution(\@bins);
+=item $stat->frequency_distribution_ref(\@bins);
 
-=item $stat->frequency_distribution();
+=item $stat->frequency_distribution_ref();
 
-C<frequency_distribution($partitions)> slices the data into
+C<frequency_distribution_ref($partitions)> slices the data into
 C<$partition> sets (where $partition is greater than 1) and counts the
-number of items that fall into each partition. It returns an
-associative array where the keys are the numerical values of the
+number of items that fall into each partition. It returns a reference to
+a hash where the keys are the numerical values of the
 partitions used. The minimum value of the data set is not a key and the
 maximum value of the data set is always a key. The number of entries
 for a particular partition key are the number of items which are
@@ -749,9 +963,9 @@ greater than the previous partition key and less then or equal to the
 current partition key. As an example,
 
    $stat->add_data(1,1.5,2,2.5,3,3.5,4);
-   %f = $stat->frequency_distribution(2);
-   for (sort {$a <=> $b} keys %f) {
-      print "key = $_, count = $f{$_}\n";
+   $f = $stat->frequency_distribution_ref(2);
+   for (sort {$a <=> $b} keys %$f) {
+      print "key = $_, count = $f->{$_}\n";
    }
 
 prints
@@ -762,15 +976,25 @@ prints
 since there are four items less than or equal to 2.5, and 3 items
 greater than 2.5 and less than 4.
 
-C<frequency_distribution(\@bins)> provides the bins that are to be used
+C<frequency_distribution_refs(\@bins)> provides the bins that are to be used
 for the distribution.  This allows for non-uniform distributions as
 well as trimmed or sample distributions to be found.  C<@bins> must
 be monotonic and contain at least one element.  Note that unless the
 set of bins contains the range that the total counts returned will
 be less than the sample size.
 
-Calling C<frequency_distribution()> with no arguments returns the last
+Calling C<frequency_distribution_ref()> with no arguments returns the last
 distribution calculated, if such exists.
+
+=item my %hash = $stat->frequency_distribution($partitions);
+
+=item my %hash = $stat->frequency_distribution(\@bins);
+
+=item my %hash = $stat->frequency_distribution();
+
+Same as C<frequency_distribution_ref()> except that returns the hash clobbered
+into the return list. Kept for compatibility reasons with previous
+versions of Statistics::Descriptive and using it is discouraged.
 
 =item $stat->least_squares_fit();
 
@@ -840,6 +1064,12 @@ track it down.
 =back
 
 =head1 AUTHOR
+
+Current maintainer:
+
+Shlomi Fish, L<http://www.shlomifish.org/> , C<shlomif@cpan.org>
+
+Previously:
 
 Colin Kuskie
 
