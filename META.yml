@@ -1,38 +1,14 @@
 ---
-name: Statistics-Descriptive
-version: 3.0100
+abstract: 'Module of basic descriptive statistical functions.'
 author:
   - 'Shlomi Fish <shlomif@iglu.org.il>'
-abstract: Module of basic descriptive statistical functions.
-license: perl
-resources:
-  homepage: http://web-cpan.berlios.de/modules/Statistics-Descriptive/
-  license: http://dev.perl.org/licenses/
-  repository: http://svn.berlios.de/svnroot/repos/web-cpan/Statistics-Descriptive/
 build_requires:
   Benchmark: 0
   Test::More: 0
   lib: 0
-requires:
-  Carp: 0
-  POSIX: 0
-  strict: 0
-  vars: 0
-  warnings: 0
 configure_requires:
-  Module::Build: 0.34
-provides:
-  Statistics::Descriptive:
-    file: lib/Statistics/Descriptive.pm
-    version: 3.0100
-  Statistics::Descriptive::Full:
-    file: lib/Statistics/Descriptive.pm
-  Statistics::Descriptive::Sparse:
-    file: lib/Statistics/Descriptive.pm
-generated_by: Module::Build version 0.34
-meta-spec:
-  url: http://module-build.sourceforge.net/META-spec-v1.4.html
-  version: 1.4
+  Module::Build: 0.36
+generated_by: 'Module::Build version 0.3607'
 keywords:
   - average
   - distribution
@@ -41,4 +17,28 @@ keywords:
   - statistics
   - stats
   - stddev
-  - standard deviation
+  - 'standard deviation'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Statistics-Descriptive
+provides:
+  Statistics::Descriptive:
+    file: lib/Statistics/Descriptive.pm
+    version: 3.0101
+  Statistics::Descriptive::Full:
+    file: lib/Statistics/Descriptive.pm
+  Statistics::Descriptive::Sparse:
+    file: lib/Statistics/Descriptive.pm
+requires:
+  Carp: 0
+  POSIX: 0
+  strict: 0
+  vars: 0
+  warnings: 0
+resources:
+  homepage: http://web-cpan.berlios.de/modules/Statistics-Descriptive/
+  license: http://dev.perl.org/licenses/
+  repository: http://svn.berlios.de/svnroot/repos/web-cpan/Statistics-Descriptive/
+version: 3.0101
