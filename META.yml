@@ -26,11 +26,13 @@ name: Statistics-Descriptive
 provides:
   Statistics::Descriptive:
     file: lib/Statistics/Descriptive.pm
-    version: 3.0101
+    version: 3.0102
   Statistics::Descriptive::Full:
     file: lib/Statistics/Descriptive.pm
+    version: 3.0102
   Statistics::Descriptive::Sparse:
     file: lib/Statistics/Descriptive.pm
+    version: 3.0102
 requires:
   Carp: 0
   POSIX: 0
@@ -41,4 +43,4 @@ resources:
   homepage: http://web-cpan.berlios.de/modules/Statistics-Descriptive/
   license: http://dev.perl.org/licenses/
   repository: http://svn.berlios.de/svnroot/repos/web-cpan/Statistics-Descriptive/
-version: 3.0101
+version: 3.0102
