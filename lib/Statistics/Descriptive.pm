@@ -10,7 +10,7 @@ require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
 		  ##Perl5.  01-03 weren't bug free.
 use vars (qw($VERSION $Tolerance));
 
-$VERSION = '3.0102';
+$VERSION = '3.0200';
 
 $Tolerance = 0.0;
 
@@ -18,7 +18,7 @@ package Statistics::Descriptive::Sparse;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0102';
+$VERSION = '3.0200';
 
 use vars qw(%fields);
 use Carp;
@@ -234,7 +234,7 @@ package Statistics::Descriptive::Full;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0102';
+$VERSION = '3.0200';
 
 use Carp;
 
@@ -255,6 +255,7 @@ use vars qw(@ISA $a $b %fields);
 __PACKAGE__->_make_private_accessors(
     [qw(data frequency geometric_mean harmonic_mean 
         least_squares_fit median mode
+        skewness kurtosis
        )
     ]
 );
@@ -607,6 +608,71 @@ sub geometric_mean {
     return $self->_geometric_mean();
 }
 
+sub skewness {
+    my $self = shift;
+
+    if (!defined($self->_skewness()))
+    {
+        my $n    = $self->count();
+        my $sd   = $self->standard_deviation();
+        
+        my $skew;
+        
+        #  skip if insufficient records
+        if ( $sd && $n > 2) {
+            
+            my $mean = $self->mean();
+            
+            my $sum_pow3;
+            
+            foreach my $rec ( $self->get_data ) {
+                my $value  = (($rec - $mean) / $sd);
+                $sum_pow3 +=  $value ** 3;
+            }
+            
+            my $correction = $n / ( ($n-1) * ($n-2) );
+            
+            $skew = $correction * $sum_pow3;
+        }
+
+        $self->_skewness($skew);
+    }
+
+    return $self->_skewness();
+}
+
+sub kurtosis {
+    my $self = shift;
+
+    if (!defined($self->_kurtosis()))
+    {
+        my $kurt;
+        
+        my $n  = $self->count();
+        my $sd   = $self->standard_deviation();
+        
+        if ( $sd && $n > 3) {
+
+            my $mean = $self->mean();
+            
+            my $sum_pow4;
+            foreach my $rec ( $self->get_data ) {
+                $sum_pow4 += ( ($rec - $mean ) / $sd ) ** 4;
+            }
+            
+            my $correction1 = ( $n * ($n+1) ) / ( ($n-1) * ($n-2) * ($n-3) );
+            my $correction2 = ( 3  * ($n-1) ** 2) / ( ($n-2) * ($n-3) );
+            
+            $kurt = ( $correction1 * $sum_pow4 ) - $correction2;
+        }
+        
+        $self->_kurtosis($kurt);
+    }
+
+    return $self->_kurtosis();
+}
+
+
 sub frequency_distribution_ref
 {
     my $self = shift;
@@ -903,6 +969,19 @@ the data from being sorted again. The flag is cleared whenever add_data
 is called.  Calling the method without an argument returns the value of
 the flag.
 
+=item $stat->skewness();
+
+Returns the skewness of the data. 
+A value of zero is no skew, negative is a left skewed tail,
+positive is a right skewed tail. 
+This is consistent with Excel.
+
+=item $stat->kurtosis();
+
+Returns the kurtosis of the data.
+Positive is peaked, negative is flattened.
+
+
 =item $x = $stat->percentile(25);
 
 =item ($x, $index) = $stat->percentile(25);
@@ -1173,81 +1252,5 @@ and/or modify it under the same terms as Perl itself.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
-
-=head1 REVISION HISTORY
-
-=over 4
-
-=item v2.3
-
-Rolled into November 1998
-
-Code provided by Andrea Spinelli to prevent division by zero and to
-make consistent return values for undefined behavior.  Andrea also
-provided a test bench for the module.
-
-A bug fix for the calculation of frequency distributions.  Thanks to Nick
-Tolli for alerting this to me.
-
-Added 4 lines of code to Makefile.PL to make it easier for the ActiveState
-installation tool to use.  Changes work fine in perl5.004_04, haven't
-tested them under perl5.005xx yet.
-
-=item v2.2
-
-Rolled into March 1998.
-
-Fixed problem with sending 0's and -1's as data.  The old 0 : true ? false
-thing.  Use defined to fix.
-
-Provided a fix for AUTOLOAD/DESTROY/Carp bug.  Very strange.
-
-=item v2.1
-
-August 1997
-
-Fixed errors in statistics algorithms caused by changing the
-interface.
-
-=item v2.0
-
-August 1997
-
-Fixed errors in removing cached values (they weren't being removed!)
-and added sort_data and presorted methods.
-
-June 1997
-
-Transferred ownership of the module from Jason to Colin.
-
-Rewrote OO interface, modified function distribution, added mindex,
-maxdex.
-
-=item v1.1
-
-April 1995
-
-Added LeastSquaresFit and FrequencyDistribution.
-
-=item v1.0 
-
-March 1995
-
-Released to comp.lang.perl and placed on archive sites.
-
-=item v.20
-
-December 1994
-
-Complete rewrite after extensive and invaluable e-mail 
-correspondence with Anno Siegel.
-
-=item v.10
-
-December 1994
-
-Initital concept, released to perl5-porters list.
-
-=back
 
 =cut
