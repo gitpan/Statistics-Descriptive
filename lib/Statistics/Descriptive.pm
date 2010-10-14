@@ -10,7 +10,7 @@ require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
 		  ##Perl5.  01-03 weren't bug free.
 use vars (qw($VERSION $Tolerance));
 
-$VERSION = '3.0200';
+$VERSION = '3.0201';
 
 $Tolerance = 0.0;
 
@@ -18,7 +18,7 @@ package Statistics::Descriptive::Sparse;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0200';
+$VERSION = '3.0201';
 
 use vars qw(%fields);
 use Carp;
@@ -234,7 +234,7 @@ package Statistics::Descriptive::Full;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0200';
+$VERSION = '3.0201';
 
 use Carp;
 
@@ -1016,7 +1016,8 @@ for which F(x) >= a given percentage.  So the 50th percentile of the
 example above is 4, since F(4) = 3/6 = 50%; the 25th percentile is
 -2, since F(-5) = 1/6 < 25%, and F(-2) = 2/6 >= 25%; the 100th
 percentile is 18; and the 0th percentile is -infinity, as is the 15th
-percentile.
+percentile, which for ease of handling and backward compatibility is returned
+as undef() by the function.
 
 Care must be taken when using percentiles to summarize a sample,
 because they can lend an unwarranted appearance of more precision
