@@ -8,7 +8,7 @@ build_requires:
   lib: 0
 configure_requires:
   Module::Build: 0.36
-generated_by: 'Module::Build version 0.3607'
+generated_by: 'Module::Build version 0.3617'
 keywords:
   - average
   - distribution
@@ -26,13 +26,13 @@ name: Statistics-Descriptive
 provides:
   Statistics::Descriptive:
     file: lib/Statistics/Descriptive.pm
-    version: 3.0201
+    version: 3.0202
   Statistics::Descriptive::Full:
     file: lib/Statistics/Descriptive.pm
-    version: 3.0201
+    version: 3.0202
   Statistics::Descriptive::Sparse:
     file: lib/Statistics/Descriptive.pm
-    version: 3.0201
+    version: 3.0202
 requires:
   Carp: 0
   POSIX: 0
@@ -42,5 +42,5 @@ requires:
 resources:
   homepage: http://web-cpan.berlios.de/modules/Statistics-Descriptive/
   license: http://dev.perl.org/licenses/
-  repository: http://svn.berlios.de/svnroot/repos/web-cpan/Statistics-Descriptive/
-version: 3.0201
+  repository: https://bitbucket.org/shlomif/perl-statistics-descriptive
+version: 3.0202

@@ -10,6 +10,9 @@ my $builder = Test::Run::Builder->new(
     license             => 'perl',
     dist_author         => 'Shlomi Fish <shlomif@iglu.org.il>',
     dist_version_from   => 'lib/Statistics/Descriptive.pm',
+    configure_requires => {
+        'Module::Build' => '0.36',
+    },
     build_requires => {
         'Benchmark' => 0,
         'lib' => 0,
@@ -29,7 +32,7 @@ my $builder = Test::Run::Builder->new(
     {
         resources =>
         {
-            repository => "http://svn.berlios.de/svnroot/repos/web-cpan/Statistics-Descriptive/",
+            repository => "https://bitbucket.org/shlomif/perl-statistics-descriptive",
             homepage => "http://web-cpan.berlios.de/modules/Statistics-Descriptive/",
         },
         keywords =>

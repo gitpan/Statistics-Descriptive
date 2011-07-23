@@ -10,7 +10,7 @@ require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
 		  ##Perl5.  01-03 weren't bug free.
 use vars (qw($VERSION $Tolerance));
 
-$VERSION = '3.0201';
+$VERSION = '3.0202';
 
 $Tolerance = 0.0;
 
@@ -18,7 +18,7 @@ package Statistics::Descriptive::Sparse;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0201';
+$VERSION = '3.0202';
 
 use vars qw(%fields);
 use Carp;
@@ -234,7 +234,7 @@ package Statistics::Descriptive::Full;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0201';
+$VERSION = '3.0202';
 
 use Carp;
 
@@ -553,36 +553,30 @@ sub mode
     if (!defined ($self->_mode()))
     {
         my $mode = 0;
-        my $occurances= 0;
-        my $flag = 1;
+        my $occurances = 0;
 
         my %count;
 
         foreach my $item (@{ $self->_data() })
         {
-            $count{$item}++;
-            $flag = 0 if ($count{$item} > 1);
-        }
-
-        #Distribution is flat - no mode exists
-        if ($flag)
-        {
-            return undef;
-        }
-
-        foreach my $val (keys %count)
-        {
-            if ($count{$val} > $occurances)
+            my $count = ++$count{$item};
+            if ($count > $occurances)
             {
-                $occurances = $count{$val};
-                $mode = $val;
+                $mode = $item;
+                $occurances = $count;
             }
         }
 
-        $self->_mode($mode);
+        $self->_mode(
+            ($occurances > 1)
+            ? {exists => 1, mode => $mode}
+            : {exists => 0,}
+        );
     }
 
-    return $self->_mode();
+    my $m = $self->_mode;
+
+    return $m->{'exists'} ? $m->{mode} : undef;
 }
 
 sub geometric_mean {
@@ -1079,9 +1073,11 @@ it will return undef for both of those cases.
 
 Returns the geometric mean of the data.
 
-=item $stat->mode();
+=item my $mode = $stat->mode();
 
-Returns the mode of the data. 
+Returns the mode of the data. The mode is the most commonly occuring datum.
+See L<http://en.wikipedia.org/wiki/Mode_%28statistics%29> . If all values
+occur only once, then mode() will return undef. 
 
 =item $stat->trimmed_mean(ltrim[,utrim]);
 
