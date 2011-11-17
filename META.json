@@ -1,0 +1,74 @@
+{
+   "abstract" : "Module of basic descriptive statistical functions.",
+   "author" : [
+      "Shlomi Fish <shlomif@iglu.org.il>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.112621",
+   "keywords" : [
+      "average",
+      "distribution",
+      "mean",
+      "median",
+      "statistics",
+      "stats",
+      "stddev",
+      "standard deviation"
+   ],
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Statistics-Descriptive",
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "Benchmark" : 0,
+            "Test::More" : 0,
+            "lib" : 0
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "Module::Build" : "0.36"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Carp" : 0,
+            "POSIX" : 0,
+            "strict" : 0,
+            "vars" : 0,
+            "warnings" : 0
+         }
+      }
+   },
+   "provides" : {
+      "Statistics::Descriptive" : {
+         "file" : "lib/Statistics/Descriptive.pm",
+         "version" : "3.0203"
+      },
+      "Statistics::Descriptive::Full" : {
+         "file" : "lib/Statistics/Descriptive.pm",
+         "version" : "3.0203"
+      },
+      "Statistics::Descriptive::Sparse" : {
+         "file" : "lib/Statistics/Descriptive.pm",
+         "version" : "3.0203"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "homepage" : "http://web-cpan.berlios.de/modules/Statistics-Descriptive/",
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ],
+      "repository" : {
+         "url" : "https://bitbucket.org/shlomif/perl-statistics-descriptive"
+      }
+   },
+   "version" : "3.0203"
+}
