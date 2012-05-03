@@ -4,7 +4,7 @@
       "Shlomi Fish <shlomif@iglu.org.il>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120351",
+   "generated_by" : "Module::Build version 0.38, CPAN::Meta::Converter version 2.120630",
    "keywords" : [
       "average",
       "distribution",
@@ -49,15 +49,15 @@
    "provides" : {
       "Statistics::Descriptive" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0400"
+         "version" : "3.0500"
       },
       "Statistics::Descriptive::Full" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0400"
+         "version" : "3.0500"
       },
       "Statistics::Descriptive::Sparse" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0400"
+         "version" : "3.0500"
       }
    },
    "release_status" : "stable",
@@ -70,5 +70,5 @@
          "url" : "https://bitbucket.org/shlomif/perl-statistics-descriptive"
       }
    },
-   "version" : "3.0400"
+   "version" : "3.0500"
 }
