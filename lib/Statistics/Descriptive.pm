@@ -10,7 +10,7 @@ require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
 		  ##Perl5.  01-03 weren't bug free.
 use vars (qw($VERSION $Tolerance $Min_samples_number));
 
-$VERSION = '3.0500';
+$VERSION = '3.0600';
 
 $Tolerance = 0.0;
 $Min_samples_number = 4;
@@ -19,10 +19,11 @@ package Statistics::Descriptive::Sparse;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0500';
+$VERSION = '3.0600';
 
 use vars qw(%fields);
 use Carp;
+use Statistics::Descriptive::Smoother;
 
 sub _make_accessors
 {
@@ -238,11 +239,11 @@ package Statistics::Descriptive::Full;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0500';
+$VERSION = '3.0600';
 
 use Carp;
-
 use POSIX ();
+use Statistics::Descriptive::Smoother;
 
 use vars qw(@ISA $a $b %fields);
 
@@ -252,12 +253,13 @@ use vars qw(@ISA $a $b %fields);
 %fields = (
   _permitted => undef,  ##Place holder for the inherited key hash
   data       => undef,  ##Our data
+  samples    => undef,  ##Number of samples for each value of the data set
   presorted  => undef,  ##Flag to indicate the data is already sorted
   _reserved  => undef,  ##Place holder for this lookup hash
 );
 
 __PACKAGE__->_make_private_accessors(
-    [qw(data frequency geometric_mean harmonic_mean 
+    [qw(data samples frequency geometric_mean harmonic_mean
         least_squares_fit median mode
         skewness kurtosis
        )
@@ -271,6 +273,7 @@ sub _clear_fields
 
     # Empty array ref for holding data later!
     $self->_data([]);
+    $self->_samples([]);
     $self->_reserved(\%fields);
     $self->presorted(0);
     $self->_trimmed_mean_cache(+{});
@@ -350,6 +353,21 @@ sub add_data {
   return 1;
 }
 
+sub add_data_with_samples {
+    my ($self,$aref_values) = @_;
+
+    return 1 if (!@{ $aref_values });
+
+    my $aref_data = [map { keys %$_ } @{ $aref_values }];
+    my $aref_samples = [map { values %$_ } @{ $aref_values }];
+
+    $self->add_data($aref_data);
+    push @{ $self->_samples() }, @{ $aref_samples };
+
+    return 1;
+}
+
+
 sub get_data {
   my $self = shift;
   return @{ $self->_data() };
@@ -370,7 +388,7 @@ sub get_data_without_outliers {
 
     my $outlier_candidate_index = $self->_outlier_candidate_index;
     my $possible_outlier = ($self->_data())->[$outlier_candidate_index];
-    my $is_outlier = $self->{_outlier_filter}->($possible_outlier);
+    my $is_outlier = $self->{_outlier_filter}->($self, $possible_outlier);
 
     return $self->get_data unless $is_outlier;
     # Removing the outlier from the dataset
@@ -407,6 +425,25 @@ sub _outlier_candidate_index {
         }
     }
     return $outlier_candidate_index;
+}
+
+sub set_smoother {
+    my ($self, $args) = @_;
+
+    $args->{data}    = $self->_data();
+    $args->{samples} = $self->_samples();
+
+    $self->{_smoother} = Statistics::Descriptive::Smoother->instantiate($args);
+}
+
+sub get_smoothed_data {
+    my ($self, $args) = @_;
+
+    if (!defined $self->{_smoother}) {
+        carp("Smoother object not defined\n");
+        return;
+    }
+    $self->{_smoother}->get_smoothed_data();
 }
 
 sub sort_data {
@@ -1014,6 +1051,12 @@ I<Note:  Calling add_data with an empty array will delete all of your
 Full method cached values!  Cached values for the sparse methods are
 not changed>
 
+=item $stat->add_data_with_samples([{1 => 10}, {2 => 20}, {3 => 30},]);
+
+Add data to the statistics variable and set the number of samples each value has been
+built with. The data is the key of each element of the input array ref, while
+the value is the number of samples: [{data1 => smaples1}, {data2 => samples2}, ...]
+
 =item $stat->get_data();
 
 Returns a copy of the data array.
@@ -1061,7 +1104,7 @@ Example #1: Undefined code reference
 
 Example #2: Valid code reference
 
-    sub outlier_filter { return $_[0] > 1; }
+    sub outlier_filter { return $_[1] > 1; }
 
     my $stat = Statistics::Descriptive::Full->new();
     $stat->add_data( 1, 1, 1, 100, 1, );
@@ -1074,7 +1117,23 @@ In this example the series is really simple and the outlier filter function as w
 For more complex series the outlier filter function might be more complex
 (see Grubbs' test for outliers).
 
+The outlier filter function will receive as first parameter the Statistics::Descriptive::Full object,
+as second the value of the candidate outlier. Having the object in the function
+might be useful for complex filters where statistics property are needed (again see Grubbs' test for outlier).
+
 =back
+
+=item $stat->set_smoother({ method => 'exponential', coeff => 0, });
+
+Set the method used to smooth the data and the smoothing coefficient.
+See C<Statistics::Smoother> for more details.
+
+=item $stat->get_smoothed_data();
+
+Returns a copy of the smoothed data array.
+
+The smoothing method and coefficient need to be defined (see C<set_smoother>),
+otherwise the function will return an undef value.
 
 =item $stat->sort_data();
 

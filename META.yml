@@ -27,13 +27,22 @@ name: Statistics-Descriptive
 provides:
   Statistics::Descriptive:
     file: lib/Statistics/Descriptive.pm
-    version: 3.0500
+    version: 3.0600
   Statistics::Descriptive::Full:
     file: lib/Statistics/Descriptive.pm
-    version: 3.0500
+    version: 3.0600
+  Statistics::Descriptive::Smoother:
+    file: lib/Statistics/Descriptive/Smoother.pm
+    version: 3.0600
+  Statistics::Descriptive::Smoother::Exponential:
+    file: lib/Statistics/Descriptive/Smoother/Exponential.pm
+    version: 3.0600
+  Statistics::Descriptive::Smoother::Weightedexponential:
+    file: lib/Statistics/Descriptive/Smoother/Weightedexponential.pm
+    version: 3.0600
   Statistics::Descriptive::Sparse:
     file: lib/Statistics/Descriptive.pm
-    version: 3.0500
+    version: 3.0600
 requires:
   Carp: 0
   POSIX: 0
@@ -44,4 +53,4 @@ resources:
   homepage: http://web-cpan.berlios.de/modules/Statistics-Descriptive/
   license: http://dev.perl.org/licenses/
   repository: https://bitbucket.org/shlomif/perl-statistics-descriptive
-version: 3.0500
+version: 3.0600
