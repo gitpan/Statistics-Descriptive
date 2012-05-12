@@ -5,7 +5,7 @@ use warnings;
 
 use Carp;
 
-our $VERSION = '3.0601';
+our $VERSION = '3.0602';
 
 sub instantiate {
     my ($class, $args) = @_;
@@ -78,7 +78,7 @@ C<Statistics::Descriptive::Smoother::Exponential> and C<Statistics::Descriptive:
 for more details).
 
 This class is just a factory that will instantiate the object to perform the
-choosen smoothing algorithm.
+chosen smoothing algorithm.
 
 =head1 METHODS
 
