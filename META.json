@@ -49,27 +49,27 @@
    "provides" : {
       "Statistics::Descriptive" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0604"
+         "version" : "3.0605"
       },
       "Statistics::Descriptive::Full" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0604"
+         "version" : "3.0605"
       },
       "Statistics::Descriptive::Smoother" : {
          "file" : "lib/Statistics/Descriptive/Smoother.pm",
-         "version" : "3.0604"
+         "version" : "3.0605"
       },
       "Statistics::Descriptive::Smoother::Exponential" : {
          "file" : "lib/Statistics/Descriptive/Smoother/Exponential.pm",
-         "version" : "3.0604"
+         "version" : "3.0605"
       },
       "Statistics::Descriptive::Smoother::Weightedexponential" : {
          "file" : "lib/Statistics/Descriptive/Smoother/Weightedexponential.pm",
-         "version" : "3.0604"
+         "version" : "3.0605"
       },
       "Statistics::Descriptive::Sparse" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0604"
+         "version" : "3.0605"
       }
    },
    "release_status" : "stable",
@@ -82,5 +82,5 @@
          "url" : "https://bitbucket.org/shlomif/perl-statistics-descriptive"
       }
    },
-   "version" : "3.0604"
+   "version" : "3.0605"
 }
