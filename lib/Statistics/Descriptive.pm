@@ -5,12 +5,11 @@ use warnings;
 
 ##This module draws heavily from perltoot v0.4 from Tom Christiansen.
 
-require 5.00404;  ##Yes, this is underhanded, but makes support for me easier
-		  ##Not only that, but it's the latest "safe" version of
-		  ##Perl5.  01-03 weren't bug free.
+use 5.006;
+
 use vars (qw($VERSION $Tolerance $Min_samples_number));
 
-$VERSION = '3.0605';
+$VERSION = '3.0606';
 
 $Tolerance = 0.0;
 $Min_samples_number = 4;
@@ -19,7 +18,7 @@ package Statistics::Descriptive::Sparse;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0605';
+$VERSION = '3.0606';
 
 use vars qw(%fields);
 use Carp;
@@ -113,74 +112,75 @@ sub _is_permitted
 }
 
 sub add_data {
-  my $self = shift;  ##Myself
-  my $oldmean;
-  my ($min,$mindex,$max,$maxdex,$sum,$sumsq,$count);
-  my $aref;
+    my $self = shift;  ##Myself
+    my $oldmean;
+    my ($min,$mindex,$max,$maxdex,$sum,$sumsq,$count);
+    my $aref;
 
-  if (ref $_[0] eq 'ARRAY') {
-    $aref = $_[0];
-  }
-  else {
-    $aref = \@_;
-  }
-
-  ##If we were given no data, we do nothing.
-  return 1 if (!@{ $aref });
-
-  ##Take care of appending to an existing data set
-
-  if (!defined($min = $self->min()))
-  {
-      $min = $aref->[$mindex = 0];
-  }
-  else
-  {
-      $mindex = $self->mindex();
-  }
-
-  if (!defined($max = $self->max()))
-  {
-      $max = $aref->[$maxdex = 0];
-  }
-  else
-  {
-      $maxdex = $self->maxdex();
-  }
-
-  $sum = $self->sum();
-  $sumsq = $self->sumsq();
-  $count = $self->count();
-
-  ##Calculate new mean, sumsq, min and max;
-  foreach ( @{ $aref } ) {
-    $sum += $_;
-    $sumsq += $_**2;
-    $count++;
-    if ($_ >= $max) {
-      $max = $_;
-      $maxdex = $count-1;
+    if (ref $_[0] eq 'ARRAY') {
+	$aref = $_[0];
     }
-    if ($_ <= $min) {
-      $min = $_;
-      $mindex = $count-1;
+    else {
+	$aref = \@_;
     }
-  }
 
-  $self->min($min);
-  $self->mindex($mindex);
-  $self->max($max);
-  $self->maxdex($maxdex);
-  $self->sample_range($max - $min);
-  $self->sum($sum);
-  $self->sumsq($sumsq);
-  $self->mean($sum / $count);
-  $self->count($count);
-  ##indicator the value is not cached.  Variance isn't commonly enough
-  ##used to recompute every single data add.
-  $self->_variance(undef);
-  return 1;
+    ##If we were given no data, we do nothing.
+    return 1 if (!@{ $aref });
+
+    ##Take care of appending to an existing data set
+
+    if (!defined($min = $self->min()))
+    {
+	$min = $aref->[$mindex = 0];
+    }
+    else
+    {
+	$mindex = $self->mindex();
+    }
+
+    if (!defined($max = $self->max()))
+    {
+	$max = $aref->[$maxdex = 0];
+    }
+    else
+    {
+	$maxdex = $self->maxdex();
+    }
+
+    $sum   = $self->sum();
+    $sumsq = $self->sumsq();
+    $count = $self->count();
+
+    ##Calculate new mean, sumsq, min and max;
+    foreach ( @{ $aref } ) {
+	$sum += $_;
+	$sumsq += $_**2;
+	$count++;
+	if ($_ >= $max) {
+	    $max = $_;
+	    $maxdex = $count-1;
+	}
+	if ($_ <= $min) {
+	    $min = $_;
+	    $mindex = $count-1;
+	}
+    }
+
+    $self->min($min);
+    $self->mindex($mindex);
+    $self->max($max);
+    $self->maxdex($maxdex);
+    $self->sample_range($max - $min);
+    $self->sum($sum);
+    $self->sumsq($sumsq);
+    $self->mean($sum / $count);
+    $self->count($count);
+    ##indicator the value is not cached.  Variance isn't commonly enough
+    ##used to recompute every single data add.
+    $self->_variance(undef);
+    return 1;
 }
+
 
 sub standard_deviation {
   my $self = shift;  ##Myself
@@ -190,35 +190,34 @@ sub standard_deviation {
 
 ##Return variance; if needed, compute and cache it.
 sub variance {
-  my $self = shift;  ##Myself
+    my $self = shift;  ##Myself
 
-  return undef if (!$self->count());
+    my $count = $self->count();
 
-  my $div = @_ ? 0 : 1;
-  my $count = $self->count();
-  if ($count < 1 + $div) {
-      return 0;
-  }
+    return undef if !$count;
 
-  if (!defined($self->_variance())) {
-    my $variance = ($self->sumsq()- $count * $self->mean()**2);
+    return 0 if $count == 1;
 
-    # Sometimes due to rounding errors we get a number below 0.
-    # This makes sure this is handled as gracefully as possible.
-    #
-    # See:
-    #
-    # https://rt.cpan.org/Public/Bug/Display.html?id=46026
-    if ($variance < 0)
-    {
-        $variance = 0;
+    if (!defined($self->_variance())) {
+        my $variance = ($self->sumsq()- $count * $self->mean()**2);
+
+        # Sometimes due to rounding errors we get a number below 0.
+        # This makes sure this is handled as gracefully as possible.
+        #
+        # See:
+        #
+        # https://rt.cpan.org/Public/Bug/Display.html?id=46026
+
+        $variance = $variance < 0 ? 0 : $variance / ($count - 1);
+
+        $self->_variance($variance);
+
+        #  Return now to avoid re-entering this sub
+	#  (and therefore save time when many objects are used).
+        return $variance;
     }
 
-    $variance /= $count - $div;
-
-    $self->_variance($variance);
-  }
-  return $self->_variance();
+    return $self->_variance();
 }
 
 ##Clear a stat.  More efficient than destroying an object and calling
@@ -228,7 +227,7 @@ sub clear {
   my $key;
 
   return if (!$self->count());
-  while (my($field, $value) = each %fields) {
+  while (my($field, $value) = each %fields) {  #  could use a slice assignment here
     $self->{$field} = $value;
   }
 }
@@ -239,7 +238,7 @@ package Statistics::Descriptive::Full;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0605';
+$VERSION = '3.0606';
 
 use Carp;
 use POSIX ();
@@ -248,6 +247,9 @@ use Statistics::Descriptive::Smoother;
 use vars qw(@ISA $a $b %fields);
 
 @ISA = qw(Statistics::Descriptive::Sparse);
+
+use List::MoreUtils;
+use List::Util;
 
 ##Create a list of fields not to remove when data is updated
 %fields = (
@@ -261,7 +263,7 @@ use vars qw(@ISA $a $b %fields);
 __PACKAGE__->_make_private_accessors(
     [qw(data samples frequency geometric_mean harmonic_mean
         least_squares_fit median mode
-        skewness kurtosis
+        skewness kurtosis median_absolute_deviation
        )
     ]
 );
@@ -305,15 +307,18 @@ sub _delete_all_cached_keys
 {
     my $self = shift;
 
+    my %keys = %{ $self };
+
+    # Remove reserved keys for this class from the deletion list
+    delete @keys{keys %{$self->_reserved}};
+    delete @keys{keys %{$self->_permitted}};
+    delete $keys{_trimmed_mean_cache};
+
     KEYS_LOOP:
-    foreach my $key (keys %{ $self }) { # Check each key in the object
-        # If it's a reserved key for this class, keep it
-        if ($self->_is_reserved($key) || $self->_is_permitted($key))
-        {
-            next KEYS_LOOP;
-        }
-        delete $self->{$key};          # Delete the out of date cached key
+    foreach my $key (keys %keys) { # Check each key in the object
+        delete $self->{$key};  # Delete any out of date cached key
     }
+    $self->{_trimmed_mean_cache} = {};  #  just reset this one
     return;
 }
 
@@ -334,24 +339,75 @@ sub clear {
 }
 
 sub add_data {
-  my $self = shift;
-  my $aref;
+    my $self = shift;  ##Myself
 
-  if (ref $_[0] eq 'ARRAY') {
-    $aref = $_[0];
-  }
-  else {
-    $aref = \@_;
-  }
-  $self->SUPER::add_data($aref);  ##Perform base statistics on the data
-  push @{ $self->_data() }, @{ $aref };
-  ##Clear the presorted flag
-  $self->presorted(0);
+    my $aref;
 
-  $self->_delete_all_cached_keys();
+    if (ref $_[0] eq 'ARRAY') {
+      $aref = $_[0];
+    }
+    else {
+      $aref = \@_;
+    }
 
-  return 1;
+    ##If we were given no data, we do nothing.
+    return 1 if (!@{ $aref });
+
+    my $oldmean;
+    my ($min, $max, $sum, $sumsq);
+    my $count = $self->count;
+
+    #  $count is modified lower down, but we need this flag after that
+    my $has_existing_data = $count;
+
+    # Take care of appending to an existing data set
+    if ($has_existing_data) {
+        $min   = $self->min();
+        $max   = $self->max();
+        $sum   = $self->sum();
+        $sumsq = $self->sumsq();
+    }
+    else {
+        $min   = $aref->[0];
+        $max   = $aref->[0];
+        $sum   = 0;
+        $sumsq = 0;
+    }
+
+    #  need to allow for already having data
+    $sum    += List::Util::sum (@$aref);
+    $sumsq  += List::Util::sum (map {$_ ** 2} @$aref);
+    $max    =  List::Util::max ($max, @$aref);
+    $min    =  List::Util::min ($min, @$aref);
+    $count  +=  scalar @$aref;
+    my $mean = $sum / $count;
+
+    $self->min($min);
+    $self->max($max);
+    $self->sample_range($max - $min);
+    $self->sum($sum);
+    $self->sumsq($sumsq);
+    $self->mean($mean);
+    $self->count($count);
+
+    ##Variance isn't commonly enough
+    ##used to recompute every single data add, so just clear its cache.
+    $self->_variance(undef);
+
+    push @{ $self->_data() }, @{ $aref };
+
+    #  no need to clear keys if we are a newly populated object,
+    #  and profiling shows it takes a long time when creating
+    #  and populating many stats objects
+    if ($has_existing_data) {
+        ##Clear the presorted flag
+        $self->presorted(0);
+        $self->_delete_all_cached_keys();
+    }
+
+    return 1;
 }
+
 
 sub add_data_with_samples {
     my ($self,$aref_values) = @_;
@@ -446,6 +502,46 @@ sub get_smoothed_data {
     $self->{_smoother}->get_smoothed_data();
 }
 
+sub maxdex {
+    my $self = shift;
+
+    return undef if !$self->count;
+    my $maxdex;
+
+    if ($self->presorted) {
+        $maxdex = $self->count - 1;
+    }
+    else {
+        my $max = $self->max;
+        $maxdex =  List::MoreUtils::first_index {$_ == $max} $self->get_data;
+    }
+
+    $self->{maxdex} = $maxdex;
+
+    return $maxdex;
+}
+
+sub mindex {
+    my $self = shift;
+
+    return undef if !$self->count;
+    #my $maxdex = $self->{maxdex};
+    #return $maxdex if defined $maxdex;
+    my $mindex;
+
+    if ($self->presorted) {
+        $mindex = 0;
+    }
+    else {
+        my $min = $self->min;
+        $mindex = List::MoreUtils::first_index {$_ == $min} $self->get_data;
+    }
+
+    $self->{mindex} = $mindex;
+
+    return $mindex;
+}
+
 sub sort_data {
   my $self = shift;
 
@@ -454,9 +550,9 @@ sub sort_data {
       ##Sort the data in descending order
       $self->_data([ sort {$a <=> $b} @{$self->_data()} ]);
       $self->presorted(1);
-      ##Fix the maxima and minima indices
-      $self->mindex(0);
-      $self->maxdex($#{$self->_data()});
+      ##Fix the maxima and minima indices - no, this is unnecessary now we have methods
+      #$self->mindex(0);
+      #$self->maxdex($#{$self->_data()});
   }
 
   return 1;
@@ -919,6 +1015,20 @@ sub least_squares_fit {
 
   return @{ $self->_least_squares_fit() };
 }
+
+sub median_absolute_deviation {
+    my ($self) = @_;
+
+    if (!defined($self->_median_absolute_deviation()))
+    {
+        my $stat = $self->new;
+        $stat->add_data(map { abs($_ - $self->median) } $self->get_data);
+        $self->_median_absolute_deviation($stat->median);
+    }
+
+    return $self->_median_absolute_deviation();
+}
+
 
 1;
 

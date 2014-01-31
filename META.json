@@ -4,7 +4,7 @@
       "Shlomi Fish <shlomif@iglu.org.il>"
    ],
    "dynamic_config" : 1,
-   "generated_by" : "Module::Build version 0.3901, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Module::Build version 0.4007, CPAN::Meta::Converter version 2.132830",
    "keywords" : [
       "average",
       "distribution",
@@ -40,6 +40,7 @@
          "requires" : {
             "Carp" : "0",
             "POSIX" : "0",
+            "perl" : "5.006",
             "strict" : "0",
             "vars" : "0",
             "warnings" : "0"
@@ -49,27 +50,27 @@
    "provides" : {
       "Statistics::Descriptive" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0605"
+         "version" : "3.0606"
       },
       "Statistics::Descriptive::Full" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0605"
+         "version" : "3.0606"
       },
       "Statistics::Descriptive::Smoother" : {
          "file" : "lib/Statistics/Descriptive/Smoother.pm",
-         "version" : "3.0605"
+         "version" : "3.0606"
       },
       "Statistics::Descriptive::Smoother::Exponential" : {
          "file" : "lib/Statistics/Descriptive/Smoother/Exponential.pm",
-         "version" : "3.0605"
+         "version" : "3.0606"
       },
       "Statistics::Descriptive::Smoother::Weightedexponential" : {
          "file" : "lib/Statistics/Descriptive/Smoother/Weightedexponential.pm",
-         "version" : "3.0605"
+         "version" : "3.0606"
       },
       "Statistics::Descriptive::Sparse" : {
          "file" : "lib/Statistics/Descriptive.pm",
-         "version" : "3.0605"
+         "version" : "3.0606"
       }
    },
    "release_status" : "stable",
@@ -82,5 +83,5 @@
          "url" : "https://bitbucket.org/shlomif/perl-statistics-descriptive"
       }
    },
-   "version" : "3.0605"
+   "version" : "3.0606"
 }
