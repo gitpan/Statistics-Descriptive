@@ -9,7 +9,7 @@ use 5.006;
 
 use vars (qw($VERSION $Tolerance $Min_samples_number));
 
-$VERSION = '3.0606';
+$VERSION = '3.0607';
 
 $Tolerance = 0.0;
 $Min_samples_number = 4;
@@ -18,7 +18,7 @@ package Statistics::Descriptive::Sparse;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0606';
+$VERSION = '3.0607';
 
 use vars qw(%fields);
 use Carp;
@@ -238,7 +238,7 @@ package Statistics::Descriptive::Full;
 
 use vars qw($VERSION);
 
-$VERSION = '3.0606';
+$VERSION = '3.0607';
 
 use Carp;
 use POSIX ();
@@ -248,8 +248,8 @@ use vars qw(@ISA $a $b %fields);
 
 @ISA = qw(Statistics::Descriptive::Sparse);
 
-use List::MoreUtils;
-use List::Util;
+use List::MoreUtils ();
+use List::Util ();
 
 ##Create a list of fields not to remove when data is updated
 %fields = (

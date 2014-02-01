@@ -8,6 +8,8 @@ WriteMakefile
   'PREREQ_PM' => {
                    'Benchmark' => 0,
                    'Carp' => 0,
+                   'List::MoreUtils' => 0,
+                   'List::Util' => 0,
                    'POSIX' => 0,
                    'Test::More' => 0,
                    'lib' => 0,
